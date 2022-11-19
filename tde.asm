@@ -64,7 +64,7 @@
         mov DH, 0
         mov DL, 0
         mov ES:BP, offset titulo
-        call print_string
+        call PRINTAR_STRING
         RESTAURAR_CONTEXTO
     endm
     PRINTAR_OPCOES macro
@@ -74,7 +74,7 @@
         mov DH, 19
         mov DL, 0
         mov ES:BP, offset opcoes
-        call print_string
+        call PRINTAR_STRING
         RESTAURAR_CONTEXTO
     endm
     DECORAR_OPCAO_JOGAR macro
@@ -119,7 +119,7 @@
     ; DH linha
     ; DL coluna
     ; ES:BP offset da string
-    print_string proc
+    PRINTAR_STRING proc
         push AX
         mov AH, 13H ; set write string
         mov AL, 0 ; set write mode (https://stanislavs.org/helppc/int_10-13.html)
@@ -130,7 +130,7 @@
     endp
 
     ; a proc atualiza o BL e BH conforme a opcao selecionada 
-    verificar_tecla_precionada proc
+    VERIFICAR_TECLA_PRECIONADA proc
         push AX
         xor AH, AH
         
@@ -174,7 +174,7 @@
             ret
     endp
     
-    inicializar_menu proc
+    INICIALIZAR_MENU proc
         SALVAR_CONTEXTO
         PRINTAR_TITULO
         DECORAR_OPCAO_JOGAR
@@ -185,7 +185,7 @@
         
         loop_render_menu:
             PRINTAR_OPCOES
-            call verificar_tecla_precionada
+            call VERIFICAR_TECLA_PRECIONADA
             
             cmp BH, 0 ; loopar enquanto Enter nao for clicado
             je loop_render_menu
@@ -206,11 +206,10 @@
         INICIALIZAR_VIDEO_MODE
         ESCONDER_CURSOR
         
-        call inicializar_menu
+        call INICIALIZAR_MENU
               
         FINALIZAR_PROGRAMA
 end inicio
-
 
 
 
