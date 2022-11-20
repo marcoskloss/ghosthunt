@@ -125,20 +125,27 @@
         int 10H
     endm
     
-    ; DI - object offset
-    ; CX - color
+    ; CX - x
+    ; DX - y
+    ; BX - color ?
     WRITE_PIXEL proc
+        PUSH_CONTEXT
+        push BX
+        
         mov BX, 0A000H
         mov ES, BX
         
         ; row + col * 320
-        mov AX, [DI+2] ; AX = Y
+        mov AX, DX ; AX = Y
         mov BX, 320
         mul BX ; AX = AX * 320
-        add AX, [DI] ; AX += X
+        add AX, CX ; AX += X
+        
+        pop BX ; to get color value
         
         mov DI, AX
-        mov ES:[DI], CL
+        mov ES:[DI], BX
+        POP_CONTEXT
         ret
     endp
     
@@ -352,21 +359,22 @@
     endp
     
     ; DI - object offset
-    ; BL - color
+    ; BX - color
     ; draws only the background
     DRAW_CHARACTER_BG proc
-        push CX
-        push DX
-        push AX
+        PUSH_CONTEXT
         
         mov CX, [DI]
         mov DX, [DI+2] ; offset to get Y
         
         draw_character_row:   
-            mov BH, 0H ; page number
-            mov AH, 0CH ; config to write pixel
-            mov AL, BL
-            int 10H
+            ;mov BH, 0H ; page number
+            ;mov AH, 0CH ; config to write pixel
+            ;mov AL, BL
+            ;int 10H
+            
+            ; CX - x, DX - y, BX - color
+            call WRITE_PIXEL ; TODO!
             
             inc CX ; if CX - x > width then next_row else next_col
             mov AX, CX
@@ -382,23 +390,21 @@
             cmp AX, [DI+6]
             jng draw_character_row
             
-        pop AX
-        pop DX
-        pop CX
+        POP_CONTEXT
+        ret
     endp
     
     RENDER_GAME proc
         PUSH_CONTEXT
+
+       ; mov CX, 50H
+        ;mov DX, 50H
+       ; mov BX, 0DH
+        ;call WRITE_PIXEL
         
-        ; DI - object offset
         mov DI, offset hunter
-        ; CX - color
-        mov CX, 0EH
-        call WRITE_PIXEL
-       
-        ;mov DI, offset hunter
-        ;mov BL, 0EH ; color
-        ;call DRAW_CHARACTER_BG
+        mov CX, 0EH ; color
+        call DRAW_CHARACTER_BG
         ;call APPLY_HUNTER_MASK
         
         POP_CONTEXT
