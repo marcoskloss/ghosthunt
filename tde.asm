@@ -23,8 +23,9 @@
     current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
+    pixel_pos dd ? ; 32 bits var
     
-    hunter dw 09FH,63H,0AH,0CH ;x,y,width,height
+    hunter dw 099H,0BBH,0AH,0CH ;x,y,width,height
             
 .code
     PUSH_CONTEXT macro
@@ -117,6 +118,29 @@
         mov [DI], ' '
         pop DI
     endm
+    WRITE_MASK_PIXEL macro
+        mov BH, 0H ; page number
+        mov AH, 0CH ; config to write pixel
+        mov AL, 0FH
+        int 10H
+    endm
+    
+    ; DI - object offset
+    ; CX - color
+    WRITE_PIXEL proc
+        mov BX, 0A000H
+        mov ES, BX
+        
+        ; row + col * 320
+        mov AX, [DI+2] ; AX = Y
+        mov BX, 320
+        mul BX ; AX = AX * 320
+        add AX, [DI] ; AX += X
+        
+        mov DI, AX
+        mov ES:[DI], CL
+        ret
+    endp
     
     ; BL cor
     ; CX qtd chars da string
@@ -213,9 +237,124 @@
     endp
     
     ; DI - object offset
+    APPLY_HUNTER_MASK proc
+        mov CX, [DI]
+        mov DX, [DI+2] ; offset to get Y
+        WRITE_MASK_PIXEL ; line 1
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        add CX, 5
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 2
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        add CX, 8
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 3
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 4
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        add CX, 3
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 5
+        mov CX, [DI]
+        add CX, 9
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 6
+        mov CX, [DI]
+        add CX, 8
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 7
+        mov CX, [DI]
+        add CX, 6
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 8
+        mov CX, [DI]
+        add CX, 7
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 9
+        mov CX, [DI]
+        add CX, 8
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 10
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 11
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        add CX, 9
+        WRITE_MASK_PIXEL
+        
+        inc DX ; line 12
+        mov CX, [DI]
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        add CX, 6
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        inc CX
+        WRITE_MASK_PIXEL
+        ret
+    endp
+    
+    ; DI - object offset
     ; BL - color
     ; draws only the background
-    DRAW_CHARACTER proc
+    DRAW_CHARACTER_BG proc
         push CX
         push DX
         push AX
@@ -223,7 +362,7 @@
         mov CX, [DI]
         mov DX, [DI+2] ; offset to get Y
         
-        draw_hunter_row:   
+        draw_character_row:   
             mov BH, 0H ; page number
             mov AH, 0CH ; config to write pixel
             mov AL, BL
@@ -233,7 +372,7 @@
             mov AX, CX
             sub AX, [DI]
             cmp AX, [DI+4] ; offset to get width
-            jng draw_hunter_row ; jump not greater (else)
+            jng draw_character_row ; jump not greater (else)
             
             inc DX ; next row
             mov CX, [DI] ; reset to 1st col
@@ -241,7 +380,7 @@
             mov AX, DX ; if DX - y > y_size then end_proc else next_row
             sub AX, [DI+2]
             cmp AX, [DI+6]
-            jng draw_hunter_row
+            jng draw_character_row
             
         pop AX
         pop DX
@@ -250,11 +389,18 @@
     
     RENDER_GAME proc
         PUSH_CONTEXT
-       
+        
+        ; DI - object offset
         mov DI, offset hunter
-        mov BL, 0DH ; color
-        call DRAW_CHARACTER        
-            
+        ; CX - color
+        mov CX, 0EH
+        call WRITE_PIXEL
+       
+        ;mov DI, offset hunter
+        ;mov BL, 0EH ; color
+        ;call DRAW_CHARACTER_BG
+        ;call APPLY_HUNTER_MASK
+        
         POP_CONTEXT
         ret
     endp
