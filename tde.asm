@@ -20,23 +20,24 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 2 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
     
-    hunter dw 099H,0BBH,0AH,0CH ;x,y,width,height
-    hunter_mask db 0,0,0,1,1,1,1,0,0,0
-                db 0,0,1,1,1,1,1,1,1,0
-                db 0,0,1,1,1,1,1,1,1,1
-                db 0,1,1,0,0,1,1,1,1,1
-                db 1,1,1,1,1,1,1,1,0,0
-                db 1,1,1,1,1,1,1,0,0,0
-                db 1,1,1,1,1,0,0,0,0,0
-                db 1,1,1,1,1,1,0,0,0,0
-                db 1,1,1,1,1,1,1,0,0,0
-                db 0,1,1,1,1,1,1,1,1,1
-                db 0,0,1,1,1,1,1,1,1,0
-                db 0,0,0,1,1,1,1,0,0,0
+    hunter dw 099H,0BBH ;x,y
+    hunter_info dw 10,10,10,12 ;x, y, x_len, y_len
+    hunter_mask db '   ....   '
+                db '  ....... '
+                db '  ........'
+                db ' ..  .....'
+                db '........  '
+                db '.......   '
+                db '.....     '
+                db '......    '
+                db '.......   '
+                db ' .........'
+                db '  ....... '
+                db '   ....   '
 .code
     PUSH_CONTEXT macro
         push AX
@@ -138,6 +139,32 @@
         
         mov BX, 0A000H
         mov ES, BX
+        
+        ; row + col * 320
+        mov AX, DX ; AX = Y
+        mov BX, 320
+        mul BX ; AX = AX * 320
+        add AX, CX ; AX += X
+        
+        pop BX ; to get color value
+        
+        mov DI, AX
+        mov ES:[DI], BL
+        POP_CONTEXT
+        ret
+    endp
+    
+    ; AX - x
+    ; DX - y
+    ; BX - color
+    WRITE_PIXEL_2 proc
+        PUSH_CONTEXT
+        push BX
+        
+        mov BX, 0A000H
+        mov ES, BX
+        
+        mov CX, AX ; CX = x
         
         ; row + col * 320
         mov AX, DX ; AX = Y
@@ -396,7 +423,7 @@
             next_pixel:
             inc CX ; if CX - x > width then next_row else next_col
             mov AX, CX
-            sub AX, [DI]
+            sub AX, [DI]    
             cmp AX, [DI+4] ; offset to get width
             jng draw_character_row ; jump not greater (else)
             
@@ -409,6 +436,36 @@
             jng draw_character_row
         POP_CONTEXT
         ret
+    endp
+    
+    ; DI - character offset
+    ; SI - character info offset dw (x, y, x_len, y_len)
+    DRAW_HUNTER proc
+        ; AX - x
+        ; DX - y
+        ; BX - color
+        ; call WRITE_PIXEL_2
+        
+        xor CX, CX
+        mov BX, 0DH ; color
+        print_char_row:
+            inc CX
+            mov AL, [DI]
+            cmp AL, 32 
+            je print_empty_pixel
+            jmp print_pixel
+            print_empty_pixel:
+            mov BX, 0FH
+            print_pixel:
+                mov AX, [SI] ; AX = x
+                add AX, CX ; AX = x + offset (FIX CX inicia com 1 e nao com 0)
+                mov DX, [SI+2] ; DX = y
+                call WRITE_PIXEL_2 
+            
+            add DI, CX ; offset
+            mov BX, 0DH ; reset color
+            cmp CX, [SI+4] ; cmp CX, x_len
+            jle print_char_row
     endp
     
     RENDER_GAME proc
@@ -445,6 +502,9 @@
             
             ; call RENDER_END_GAME
             ;jmp game_loop
+            mov DI, offset hunter_mask
+            mov SI, offset hunter_info           
+            call DRAW_HUNTER
             jmp end_prog
             
             menu:
