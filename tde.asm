@@ -20,24 +20,24 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 2 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
     
     hunter dw 099H,0BBH ;x,y
-    hunter_info dw 10,10,10,12 ;x, y, x_len, y_len
-    hunter_mask db '   ....   '
-                db '  ....... '
-                db '  ........'
-                db ' ..  .....'
-                db '........  '
-                db '.......   '
-                db '.....     '
-                db '......    '
-                db '.......   '
-                db ' .........'
-                db '  ....... '
-                db '   ....   '
+    hunter_pos dw 099H,0BBH ;x,y
+    hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+                db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
 .code
     PUSH_CONTEXT macro
         push AX
@@ -129,13 +129,12 @@
         mov [DI], ' '
         pop DI
     endm
-
-    ; CX - x
-    ; DX - y
-    ; BX - color
-    WRITE_PIXEL proc
+    
+    ; SI - hunter mask offset
+    ; DX - Y
+    ; CX - X
+    PRINT_HUNTER_LINE proc
         PUSH_CONTEXT
-        push BX
         
         mov BX, 0A000H
         mov ES, BX
@@ -145,26 +144,79 @@
         mov BX, 320
         mul BX ; AX = AX * 320
         add AX, CX ; AX += X
-        
-        pop BX ; to get color value
-        
+    
+        mov CX, 10
         mov DI, AX
-        mov ES:[DI], BL
+        loop_str:       
+            lodsb           ; AL = SI 
+            mov ES:[DI],AL  ; write pixel
+            inc DI
+            
+            loop loop_str 
         POP_CONTEXT
         ret
     endp
+    PRINT_HUNTER proc
+        push SI
+        push DI
+        push CX
+        push DX
+        
+        mov SI, offset hunter_mask
+        mov DI, offset hunter_pos
+        mov CX, [DI] ; x
+        mov DX, [DI+2] ; y
+        call PRINT_HUNTER_LINE ; line 1
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 2
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 3
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 4
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 5
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 6
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 7
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 8
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 9
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 10
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 11
+        inc DX
+        add SI, 10
+        call PRINT_HUNTER_LINE ; line 12
+        
+        pop DX
+        pop CX
+        pop DI
+        pop SI
+        ret
+    endp
     
-    ; AX - x
+    ; CX - x
     ; DX - y
     ; BX - color
-    WRITE_PIXEL_2 proc
+    WRITE_PIXEL proc
         PUSH_CONTEXT
         push BX
         
         mov BX, 0A000H
         mov ES, BX
-        
-        mov CX, AX ; CX = x
         
         ; row + col * 320
         mov AX, DX ; AX = Y
@@ -274,208 +326,10 @@
         ret
     endp
     
-    ; DI - object offset
-    APPLY_HUNTER_MASK proc
-        mov BX, 0H ; color
-        mov CX, [DI]
-        mov DX, [DI+2] ; offset to get Y
-        
-        call WRITE_PIXEL ; line 1
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        add CX, 5
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 2
-        mov CX, [DI]
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        add CX, 8
-        call WRITE_PIXEL
-        
-        inc DX ; line 3
-        mov CX, [DI]
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 4
-        mov CX, [DI]
-        call WRITE_PIXEL
-        add CX, 3
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 5
-        mov CX, [DI]
-        add CX, 9
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 6
-        mov CX, [DI]
-        add CX, 8
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 7
-        mov CX, [DI]
-        add CX, 6
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 8
-        mov CX, [DI]
-        add CX, 7
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 9
-        mov CX, [DI]
-        add CX, 8
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        
-        inc DX ; line 10
-        mov CX, [DI]
-        call WRITE_PIXEL
-        
-        inc DX ; line 11
-        mov CX, [DI]
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        add CX, 9
-        call WRITE_PIXEL
-        
-        inc DX ; line 12
-        mov CX, [DI]
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        add CX, 6
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        inc CX
-        call WRITE_PIXEL
-        ret
-    endp
-    
-    ; DI - object offset
-    ; SI - object mask offset
-    ; BX - color
-    DRAW_CHARACTER proc
-        PUSH_CONTEXT
-        
-        mov CX, [DI]
-        mov DX, [DI+2] ; offset to get Y
-        
-        draw_character_row:
-            push BX ;(X - X0) + (Y - Y0) * 10
-            mov AX, DX ; AX = Y
-            sub AX, [DI+2] ; AX = Y - Y0
-            mov BL, [DI+4] ; BL = width = 10
-            mul BL ; AX = (Y - Y0) * 10
-            mov BX, CX ; BX = X
-            sub BX, [DI] ; BX = X - X0
-            add AX, BX ; AX = (Y - Y0) * 10 + (X - X0) 
-            pop BX ; restore BX
-            add SI, AX ; apply offset
-            cmp [SI], 1
-            je should_write_pixel
-            sub SI, AX ; undo add SI,AX
-            jmp next_pixel
-            
-            should_write_pixel:
-                sub SI, AX ; undo add SI,AX
-                call WRITE_PIXEL
-                
-            next_pixel:
-            inc CX ; if CX - x > width then next_row else next_col
-            mov AX, CX
-            sub AX, [DI]    
-            cmp AX, [DI+4] ; offset to get width
-            jng draw_character_row ; jump not greater (else)
-            
-            inc DX ; next row
-            mov CX, [DI] ; reset to 1st col
-            
-            mov AX, DX ; if DX - y > y_size then end_proc else next_row
-            sub AX, [DI+2]
-            cmp AX, [DI+6]
-            jng draw_character_row
-        POP_CONTEXT
-        ret
-    endp
-    
-    ; DI - character offset
-    ; SI - character info offset dw (x, y, x_len, y_len)
-    DRAW_HUNTER proc
-        ; AX - x
-        ; DX - y
-        ; BX - color
-        ; call WRITE_PIXEL_2
-        
-        xor CX, CX
-        mov BX, 0DH ; color
-        print_char_row:
-            inc CX
-            mov AL, [DI]
-            cmp AL, 32 
-            je print_empty_pixel
-            jmp print_pixel
-            print_empty_pixel:
-            mov BX, 0FH
-            print_pixel:
-                mov AX, [SI] ; AX = x
-                add AX, CX ; AX = x + offset (FIX CX inicia com 1 e nao com 0)
-                mov DX, [SI+2] ; DX = y
-                call WRITE_PIXEL_2 
-            
-            add DI, CX ; offset
-            mov BX, 0DH ; reset color
-            cmp CX, [SI+4] ; cmp CX, x_len
-            jle print_char_row
-    endp
-    
     RENDER_GAME proc
         PUSH_CONTEXT
         
-        mov DI, offset hunter
-        mov SI, offset hunter_mask
-        mov BX, 0EH ; color
-        call DRAW_CHARACTER
-        ;call APPLY_HUNTER_MASK
+        call PRINT_HUNTER
         
         POP_CONTEXT
         ret
@@ -502,9 +356,6 @@
             
             ; call RENDER_END_GAME
             ;jmp game_loop
-            mov DI, offset hunter_mask
-            mov SI, offset hunter_info           
-            call DRAW_HUNTER
             jmp end_prog
             
             menu:
