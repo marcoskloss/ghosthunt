@@ -25,7 +25,7 @@
     screen_height dw 0C7H
     
     hunter dw 099H,0BBH ;x,y
-    hunter_pos dw 099H,0BBH ;x,y
+    hunter_pos dw 99H,0BBH ;x,y
     hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
                 db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
                 db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
@@ -247,12 +247,28 @@
         ret
     endp
     
-    CLEAR_SCREEN proc
+    CLEAR_SCREEN proc ; TODO
         PUSH_CONTEXT
         SET_VIDEO_MODE
         POP_CONTEXT
         ret
     endp
+    
+    delay proc  
+        push cx
+        push dx
+        push ax
+        
+        xor cx, cx
+        mov dx, 0C350h ; parte alta dos  50000 microsegundos 
+        mov ah, 86h
+        int 15h
+        
+        pop ax
+        pop dx
+        pop cx
+        ret
+    delay endp 
 
     ; a proc atualiza o BL e BH conforme a opcao selecionada 
     CHECK_KEYPRESS proc
@@ -326,10 +342,27 @@
         ret
     endp
     
+    CHECK_MOUSE_CLICK proc
+        mov AH, 01H
+        int 16H
+        jz end_CHECK_MOUSE_CLICK
+        
+        xor ah, ah
+        int 16h
+        cmp al, 61H
+        jne end_CHECK_MOUSE_CLICK
+        
+        inc hunter_pos
+        
+        end_CHECK_MOUSE_CLICK:
+        ret
+    endp
+    
     RENDER_GAME proc
         PUSH_CONTEXT
         
         call PRINT_HUNTER
+        call CHECK_MOUSE_CLICK
         
         POP_CONTEXT
         ret
@@ -363,7 +396,9 @@
                 jmp game_loop
                 
            game:
+                call CLEAR_SCREEN
                 call RENDER_GAME
+                call delay
                 jmp game_loop
 
             end_prog:
