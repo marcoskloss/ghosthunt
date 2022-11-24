@@ -25,19 +25,31 @@
     screen_height dw 0C7H
     
     hunter dw 099H,0BBH ;x,y
-    hunter_pos dw 99H,0BBH ;x,y
-    hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
-                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
-                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0EH,0EH,0EH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
-                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
-                db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
+    hunter_pos dw 99H,0BEH ;x,y
+    ; TODO 12x10
+    hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
+                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH,0DH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH
+                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0DH,0dH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+     
+     ghost_pos dw 10H,10H           
+     ghost_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
+                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
+                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 0EH,0EH,0EH,0DH,0EH,0EH,0EH,0EH,0DH,0EH,0EH,0EH
+                db 0DH,0EH,0DH,0DH,0DH,0EH,0EH,0DH,0DH,0DH,0EH,0DH            
+                
 .code
     PUSH_CONTEXT macro
         push AX
@@ -130,7 +142,7 @@
         pop DI
     endm
     
-    ; SI - hunter mask offset
+    ; SI - mask offset
     ; DX - Y
     ; CX - X
     PRINT_HUNTER_LINE proc
@@ -145,7 +157,7 @@
         mul BX ; AX = AX * 320
         add AX, CX ; AX += X
     
-        mov CX, 10
+        mov CX, 12
         mov DI, AX
         loop_str:       
             lodsb           ; AL = SI 
@@ -156,55 +168,52 @@
         POP_CONTEXT
         ret
     endp
+    
+    ; DI - pos offset
+    ; SI - mask offset
     PRINT_HUNTER proc
-        push SI
-        push DI
         push CX
         push DX
         
-        mov SI, offset hunter_mask
-        mov DI, offset hunter_pos
         mov CX, [DI] ; x
         mov DX, [DI+2] ; y
         call PRINT_HUNTER_LINE ; line 1
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 2
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 3
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 4
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 5
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 6
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 7
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 8
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 9
         inc DX
-        add SI, 10
+        add SI, 12
         call PRINT_HUNTER_LINE ; line 10
         inc DX
-        add SI, 10
-        call PRINT_HUNTER_LINE ; line 11
-        inc DX
-        add SI, 10
-        call PRINT_HUNTER_LINE ; line 12
+        add SI, 12
+        ;call PRINT_HUNTER_LINE ; line 11
+        ;inc DX
+        ;add SI, 10
+        ;call PRINT_HUNTER_LINE ; line 12
         
         pop DX
         pop CX
-        pop DI
-        pop SI
         ret
     endp
     
@@ -260,7 +269,7 @@
         push ax
         
         xor cx, cx
-        mov dx, 0C350h ; parte alta dos  50000 microsegundos 
+        mov dx, 0C350h ; 50000 microsecs
         mov ah, 86h
         int 15h
         
@@ -268,7 +277,7 @@
         pop dx
         pop cx
         ret
-    delay endp 
+    endp 
 
     ; a proc atualiza o BL e BH conforme a opcao selecionada 
     CHECK_KEYPRESS proc
@@ -342,26 +351,40 @@
         ret
     endp
     
-    CHECK_MOUSE_CLICK proc
-        mov AH, 01H
-        int 16H
-        jz end_CHECK_MOUSE_CLICK
+    CHECK_MOUSE_CLICK proc ; TODO
+        push CX
+        push AX
+        push BX
+        push DX
+        xor CX, CX ; mouse X
+        mov AX, 03H
+        int 33H ; https://stanislavs.org/helppc/int_33-3.html
+        test BL, 2
+        jnz RIGHT_BTN_CLICK
+        jmp end_CHECK_MOUSE_CLICK
         
-        xor ah, ah
-        int 16h
-        cmp al, 61H
-        jne end_CHECK_MOUSE_CLICK
-        
-        inc hunter_pos
-        
+        RIGHT_BTN_CLICK:
+            SHR CX, 1 ; https://stackoverflow.com/questions/51001655/how-to-get-mouse-position-in-assembly-tasm 
+            mov BX, 0DH
+            mov DX, 50H
+            call WRITE_PIXEL
+            inc hunter_pos
+            
         end_CHECK_MOUSE_CLICK:
+        pop DX
+        pop BX
+        pop AX
+        pop CX
         ret
     endp
     
     RENDER_GAME proc
         PUSH_CONTEXT
         
+        mov SI, offset hunter_mask
+        mov DI, offset hunter_pos
         call PRINT_HUNTER
+        
         call CHECK_MOUSE_CLICK
         
         POP_CONTEXT
