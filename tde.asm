@@ -20,13 +20,18 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
     
+    score_label db 'Score: '$
+    score dw 0H
+    
+    time_label db 'Tempo: '$
+    time db 60
+    
     hunter dw 099H,0BBH ;x,y
     hunter_pos dw 99H,0BEH ;x,y
-    ; TODO 12x10
     hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
                 db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
@@ -38,7 +43,7 @@
                 db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 0DH,0dH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
      
-     ghost_pos dw 10H,10H           
+     ghost_pos dw 10H,10H
      ghost_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
                 db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
                 db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
@@ -141,11 +146,11 @@
         mov [DI], ' '
         pop DI
     endm
-    
+
     ; SI - mask offset
     ; DX - Y
     ; CX - X
-    PRINT_HUNTER_LINE proc
+    PRINT_CHARACTER_LINE proc
         PUSH_CONTEXT
         
         mov BX, 0A000H
@@ -171,46 +176,42 @@
     
     ; DI - pos offset
     ; SI - mask offset
-    PRINT_HUNTER proc
+    PRINT_CHARACTER proc
         push CX
         push DX
         
         mov CX, [DI] ; x
         mov DX, [DI+2] ; y
-        call PRINT_HUNTER_LINE ; line 1
+        call PRINT_CHARACTER_LINE ; line 1
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 2
+        call PRINT_CHARACTER_LINE ; line 2
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 3
+        call PRINT_CHARACTER_LINE ; line 3
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 4
+        call PRINT_CHARACTER_LINE ; line 4
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 5
+        call PRINT_CHARACTER_LINE ; line 5
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 6
+        call PRINT_CHARACTER_LINE ; line 6
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 7
+        call PRINT_CHARACTER_LINE ; line 7
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 8
+        call PRINT_CHARACTER_LINE ; line 8
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 9
+        call PRINT_CHARACTER_LINE ; line 9
         inc DX
         add SI, 12
-        call PRINT_HUNTER_LINE ; line 10
+        call PRINT_CHARACTER_LINE ; line 10
         inc DX
         add SI, 12
-        ;call PRINT_HUNTER_LINE ; line 11
-        ;inc DX
-        ;add SI, 10
-        ;call PRINT_HUNTER_LINE ; line 12
         
         pop DX
         pop CX
@@ -263,7 +264,7 @@
         ret
     endp
     
-    delay proc  
+    DELAY proc  
         push cx
         push dx
         push ax
@@ -326,6 +327,7 @@
     
     ; essa proc altera o valor de BX
     RENDER_MENU proc
+        PUSH_CONTEXT
         RENDER_TITLE
         
         ; BL = 0 - Jogar, 1 - Sair
@@ -348,6 +350,7 @@
             mov current_screen, 1H
             
         end_render_menu:
+        POP_CONTEXT
         ret
     endp
     
@@ -381,9 +384,13 @@
     RENDER_GAME proc
         PUSH_CONTEXT
         
+        mov SI, offset ghost_mask
+        mov DI, offset ghost_pos
+        call PRINT_CHARACTER
+        
         mov SI, offset hunter_mask
         mov DI, offset hunter_pos
-        call PRINT_HUNTER
+        call PRINT_CHARACTER
         
         call CHECK_MOUSE_CLICK
         
@@ -421,7 +428,7 @@
            game:
                 call CLEAR_SCREEN
                 call RENDER_GAME
-                call delay
+                call DELAY
                 jmp game_loop
 
             end_prog:
