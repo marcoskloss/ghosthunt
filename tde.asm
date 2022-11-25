@@ -20,14 +20,14 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
     
-    score_label db 'Score: '$
-    score dw 0H
+    score_label db 'Score: 50' ; TODO
+    score dw 0
     
-    time_label db 'Tempo: '$
+    time_label db 'Tempo: 60' ; TODO
     time db 60
     
     hunter dw 099H,0BBH ;x,y
@@ -257,6 +257,26 @@
         ret
     endp
     
+    WRITE_SCORE_LABEL proc
+        mov BL, 0FH
+        mov CX, 9
+        mov DH, 0H
+        mov DL, 0H
+        mov ES:BP, offset score_label
+        call PRINT_STRING ; TODO proc para escrever string sem usar a int 10H
+        ret
+    endp
+    
+    WRITE_TIME_LABEL proc
+        mov BL, 0FH
+        mov CX, 9
+        mov DH, 0H
+        mov DL, 6FH
+        mov ES:BP, offset time_label
+        call PRINT_STRING ; TODO proc para escrever string sem usar a int 10H
+        ret
+    endp
+    
     CLEAR_SCREEN proc ; TODO
         PUSH_CONTEXT
         SET_VIDEO_MODE
@@ -384,6 +404,9 @@
     RENDER_GAME proc
         PUSH_CONTEXT
         
+        ;call WRITE_SCORE_LABEL
+        ;call WRITE_TIME_LABEL
+        
         mov SI, offset ghost_mask
         mov DI, offset ghost_pos
         call PRINT_CHARACTER
@@ -392,7 +415,7 @@
         mov DI, offset hunter_pos
         call PRINT_CHARACTER
         
-        call CHECK_MOUSE_CLICK
+        ;call CHECK_MOUSE_CLICK
         
         POP_CONTEXT
         ret
