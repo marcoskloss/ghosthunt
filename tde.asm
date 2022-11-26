@@ -20,7 +20,7 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 1 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     screen_width dw 13FH
     screen_height dw 0C7H
     
@@ -32,28 +32,28 @@
     
     hunter dw 099H,0BBH ;x,y
     hunter_pos dw 99H,0BEH ;x,y
-    hunter_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
-                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
-                db 0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH,0DH
-                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH,0DH,0DH
-                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
-                db 0DH,0dH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
+    hunter_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
+                db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 00H,0EH,0EH,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
+                db 0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H,00H,00H,00H
+                db 0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H,00H,00H,00H
+                db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H,00H,00H
+                db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
+                db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
+                db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
      ghost_pos dw 10H,10H
-     ghost_mask db 0DH,0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH,0DH
-                db 0DH,0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH,0DH
-                db 0DH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0DH
-                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH
-                db 0EH,0EH,0EH,0DH,0DH,0EH,0EH,0DH,0DH,0EH,0EH,0EH
+     ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
+                db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
+                db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
+                db 0EH,0EH,0EH,00H,00H,0EH,0EH,00H,00H,0EH,0EH,0EH
+                db 0EH,0EH,0EH,00H,00H,0EH,0EH,00H,00H,0EH,0EH,0EH
                 db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
-                db 0EH,0EH,0EH,0DH,0EH,0EH,0EH,0EH,0DH,0EH,0EH,0EH
-                db 0DH,0EH,0DH,0DH,0DH,0EH,0EH,0DH,0DH,0DH,0EH,0DH            
+                db 0EH,0EH,0EH,00H,0EH,0EH,0EH,0EH,00H,0EH,0EH,0EH
+                db 00H,0EH,00H,00H,00H,0EH,0EH,00H,00H,00H,0EH,00H            
                 
 .code
     PUSH_CONTEXT macro
@@ -96,7 +96,7 @@
         mov CX, title_len
         mov DH, 0
         mov DL, 0
-        mov ES:BP, offset game_title
+        mov BP, offset game_title
         call PRINT_STRING
         POP_CONTEXT
     endm
@@ -106,44 +106,58 @@
         mov CX, options_len
         mov DH, 19
         mov DL, 0
-        mov ES:BP, offset options
+        mov BP, offset options
         call PRINT_STRING
         POP_CONTEXT
     endm
     MARK_PLAY_OPTION macro
         push DI
+        push AX
         mov DI, offset options
         add DI, 16
-        mov [DI], '['
+        mov AX, '['
+        mov [DI], AX
         add DI, 8
-        mov [DI], ']'
+        mov AX, ']'
+        mov [DI], AX
+        pop AX
         pop DI
     endm
     UNMARK_PLAY_OPTION macro
         push DI
+        push AX
         mov DI, offset options
         add DI, 16
-        mov [DI], ' '
+        mov AX, ' '
+        mov [DI], AX
         add DI, 8
-        mov [DI], ' '
+        mov [DI], AX
+        pop AX
         pop DI
     endm
     MARK_QUIT_OPTION macro
         push DI
+        push AX
         mov DI, offset options
         add DI, 57
-        mov [DI], '['
+        mov AX, '['
+        mov [DI], AX
         add DI, 8
-        mov [DI], ']'
+        mov AX, ']'
+        mov [DI], AX
+        pop AX
         pop DI
     endm
     UNMARK_QUIT_OPTION macro
         push DI
+        push AX
         mov DI, offset options
         add DI, 57
-        mov [DI], ' '
+        mov AX, ' '
+        mov [DI], AX
         add DI, 8
-        mov [DI], ' '
+        mov [DI], AX
+        pop AX
         pop DI
     endm
 
@@ -296,7 +310,7 @@
         mov CX, 9
         mov DH, 0H
         mov DL, 6FH
-        mov ES:BP, offset time_label
+        mov BP, offset time_label
         call PRINT_STRING ; TOO proc para escrever string sem usar a int 10H => usar: rep & movsb ou loadb
         POP_CONTEXT
         ret
@@ -441,18 +455,11 @@
         PUSH_CONTEXT
         
         ;call WRITE_SCORE_LABEL
-        ;call WRITE_TIME_LABEL
-        call PRINT_GHOST
-        call PRINT_HUNTER
-        call CHECK_MOUSE_CLICK
-        cmp AX, 1
-        jne end_start_game
+        call WRITE_TIME_LABEL
+        ;call PRINT_GHOST
+        ;call PRINT_HUNTER
+        ;call CHECK_MOUSE_CLICK
 
-        mov BX, 0DH
-        call WRITE_PIXEL
-        
-
-        end_start_game:
         POP_CONTEXT
         ret
     endp
@@ -467,17 +474,17 @@
         HIDE_CURSOR
         
         ;debug
-        mov  ax, 1H  ; show mouse
-        int  33h
-        debug_loop:
-            mov AX, 3
-            int 33H
-            cmp BX, 2
-            jne debug_loop
-            SHR CX, 1
-            mov BX, 0FH
-            call WRITE_PIXEL
-            jmp debug_loop
+        ;mov  ax, 1H  ; show mouse
+        ;int  33h
+        ;debug_loop:
+        ;    mov AX, 3
+         ;   int 33H
+          ;  cmp BX, 2
+           ; jne debug_loop
+            ;SHR CX, 1
+            ;mov BX, 0FH
+            ;call WRITE_PIXEL
+            ;jmp debug_loop
         ;end debug
         
         MARK_PLAY_OPTION ; menu inicia com a opcao Jogar selecionada
@@ -505,7 +512,6 @@
             end_prog:
         END_PROGRAM
 end main
-; TESTAR A PARTE DO MOUSE ISOLADAMENTE!
 ; PARA FAZER A MOVIMEMTACAO DOS GHOSTS:
 ; NAO EH NECESSARIO UMA PROC PRA APAGAR A TELA INTEIRA!
 ; fazer: DI recebe a prox posicao (x) e SI tem a posicao atual (x)]
