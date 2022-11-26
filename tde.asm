@@ -168,8 +168,35 @@
             lodsb           ; AL = SI 
             mov ES:[DI],AL  ; write pixel
             inc DI
-            
             loop loop_str 
+        POP_CONTEXT
+        ret
+    endp
+    
+    ; SI - mask offset
+    ; DX - X
+    ; BX - Y
+    PRINT_CHARACTER_LINE_v2 proc
+        PUSH_CONTEXT
+        ; row + col * 320
+        mov AX, BX ; AX = Y
+        
+        mov BX, 0A000H
+        mov ES, BX
+        
+        mov BX, 320
+        push DX ; mul altera o valor de DX
+        mul BX ; AX = AX * 320
+        pop DX
+        add AX, DX ; AX += X
+    
+        mov CX, 12
+        mov DI, AX
+        loop_str_v2:       
+            lodsb           ; AL = SI 
+            mov ES:[DI],AL  ; write pixel
+            inc DI
+            loop loop_str_v2 
         POP_CONTEXT
         ret
     endp
@@ -177,44 +204,17 @@
     ; DI - pos offset
     ; SI - mask offset
     PRINT_CHARACTER proc
-        push CX
-        push DX
-        
-        mov CX, [DI] ; x
-        mov DX, [DI+2] ; y
-        call PRINT_CHARACTER_LINE ; line 1
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 2
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 3
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 4
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 5
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 6
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 7
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 8
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 9
-        inc DX
-        add SI, 12
-        call PRINT_CHARACTER_LINE ; line 10
-        inc DX
-        add SI, 12
-        
-        pop DX
-        pop CX
+        PUSH_CONTEXT
+        mov DX, [DI] ; x
+        mov BX, [DI+2] ; y
+        mov CX, 12
+        draw_line:
+            call PRINT_CHARACTER_LINE_v2 ; line 1
+            inc BX
+            add SI, 12
+            loop draw_line
+            
+        POP_CONTEXT
         ret
     endp
     
@@ -257,23 +257,48 @@
         ret
     endp
     
-    WRITE_SCORE_LABEL proc
-        mov BL, 0FH
-        mov CX, 9
-        mov DH, 0H
-        mov DL, 0H
-        mov ES:BP, offset score_label
-        call PRINT_STRING ; TODO proc para escrever string sem usar a int 10H
+    WRITE_SCORE_LABEL proc ; TODO!
+        PUSH_CONTEXT
+        mov CX, 0H ; X
+        mov DX, 0H ; Y
+        
+        mov BX, 0A000H
+        mov ES, BX
+        
+        ; row + col * 320
+        mov AX, DX ; AX = Y
+        mov BX, 320
+        mul BX ; AX = AX * 320
+        add AX, CX ; AX += X
+    
+        mov DI, AX
+        mov CX, 9 ; chars        
+        cld ; clear DF
+        mov SI, offset score_label
+        mov AH, 0FH
+        
+        print_char:
+            lodsb               ; AL <- [SI]
+            mov ES:[DI], AL ; write char
+            inc DI
+            mov ES:[DI], AH ; color
+            inc DI
+            inc SI ; next byte
+            loop print_char
+       
+        POP_CONTEXT
         ret
     endp
     
     WRITE_TIME_LABEL proc
+        PUSH_CONTEXT
         mov BL, 0FH
         mov CX, 9
         mov DH, 0H
         mov DL, 6FH
         mov ES:BP, offset time_label
-        call PRINT_STRING ; TODO proc para escrever string sem usar a int 10H
+        call PRINT_STRING ; TOO proc para escrever string sem usar a int 10H => usar: rep & movsb ou loadb
+        POP_CONTEXT
         ret
     endp
     
@@ -368,6 +393,7 @@
         
         play_opt_selected:
             mov current_screen, 1H
+            call CLEAR_SCREEN
             
         end_render_menu:
         POP_CONTEXT
@@ -415,7 +441,7 @@
         mov DI, offset hunter_pos
         call PRINT_CHARACTER
         
-        ;call CHECK_MOUSE_CLICK
+        call CHECK_MOUSE_CLICK
         
         POP_CONTEXT
         ret
@@ -432,7 +458,7 @@
         
         MARK_PLAY_OPTION ; menu inicia com a opcao Jogar selecionada
         xor BX, BX ; inicializar valor de BX para a proc do render_menu
-        
+                
         game_loop:
             cmp current_screen, 0H
             je menu
@@ -449,11 +475,18 @@
                 jmp game_loop
                 
            game:
-                call CLEAR_SCREEN
+                ;call CLEAR_SCREEN
                 call RENDER_GAME
-                call DELAY
+                ;call DELAY
                 jmp game_loop
-
             end_prog:
         END_PROGRAM
 end main
+; TESTAR A PARTE DO MOUSE ISOLADAMENTE!
+; PARA FAZER A MOVIMEMTACAO DOS GHOSTS:
+; NAO EH NECESSARIO UMA PROC PRA APAGAR A TELA INTEIRA!
+; fazer: DI recebe a prox posicao (x) e SI tem a posicao atual (x)]
+; EX: DI = 50 SI = 51 (escrever todos os ghosts partindo de DI=50, andar?o 1px pra tr?s
+; para fazer isso ? necess?rio mover todas as 10 linhas de 320px cada para SI
+; EX: mov CX, 3200 (os 3200 px das 10 linhas da tela onde est?o os ghosts)
+;     rep stosw ou loadsw seil? qual (o certo eh aquele que faz [DI] = [SI]
