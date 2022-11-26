@@ -315,7 +315,7 @@
         push ax
         
         xor cx, cx
-        mov dx, 0C350h ; 50000 microsecs
+        mov dx, 0C350h ; 50000 microsegundos
         mov ah, 86h
         int 15h
         
@@ -400,49 +400,59 @@
         ret
     endp
     
+    ; retorna: CX - mouse X, DX - mouse Y, AX = 1 clicou, AX = 0 nao clicou
     CHECK_MOUSE_CLICK proc ; TODO
-        push CX
-        push AX
-        push BX
-        push DX
-        xor CX, CX ; mouse X
-        mov AX, 03H
+        mov AX, 3H
         int 33H ; https://stanislavs.org/helppc/int_33-3.html
-        test BL, 2
-        jnz RIGHT_BTN_CLICK
-        jmp end_CHECK_MOUSE_CLICK
-        
-        RIGHT_BTN_CLICK:
-            SHR CX, 1 ; https://stackoverflow.com/questions/51001655/how-to-get-mouse-position-in-assembly-tasm 
-            mov BX, 0DH
-            mov DX, 50H
-            call WRITE_PIXEL
-            inc hunter_pos
-            
+        cmp BL, 2H
+        jne end_CHECK_MOUSE_CLICK
+        ; https://stackoverflow.com/questions/51001655/how-to-get-mouse-position-in-assembly-tasm
+        SHR CX, 1 ; CX = CX / 2 
+        mov AX, 1
+
         end_CHECK_MOUSE_CLICK:
-        pop DX
-        pop BX
-        pop AX
-        pop CX
+        xor AX, AX
+        ret
+    endp
+
+    PRINT_GHOST proc
+        push SI
+        push DI
+        mov SI, offset ghost_mask
+        mov DI, offset ghost_pos
+        call PRINT_CHARACTER
+        pop DI
+        pop SI
+        ret
+    endp
+
+    PRINT_HUNTER proc
+        push SI
+        push DI
+        mov SI, offset hunter_mask
+        mov DI, offset hunter_pos
+        call PRINT_CHARACTER
+        pop DI
+        pop SI
         ret
     endp
     
-    RENDER_GAME proc
+    START_GAME proc
         PUSH_CONTEXT
         
         ;call WRITE_SCORE_LABEL
         ;call WRITE_TIME_LABEL
-        
-        mov SI, offset ghost_mask
-        mov DI, offset ghost_pos
-        call PRINT_CHARACTER
-        
-        mov SI, offset hunter_mask
-        mov DI, offset hunter_pos
-        call PRINT_CHARACTER
-        
+        call PRINT_GHOST
+        call PRINT_HUNTER
         call CHECK_MOUSE_CLICK
+        cmp AX, 1
+        jne end_start_game
+
+        mov BX, 0DH
+        call WRITE_PIXEL
         
+
+        end_start_game:
         POP_CONTEXT
         ret
     endp
@@ -452,9 +462,23 @@
         mov DS, AX  
         mov AX,@DATA 
         mov ES, AX
-      
+
         SET_VIDEO_MODE
         HIDE_CURSOR
+        
+        ;debug
+        mov  ax, 1H  ; show mouse
+        int  33h
+        debug_loop:
+            mov AX, 3
+            int 33H
+            cmp BX, 2
+            jne debug_loop
+            SHR CX, 1
+            mov BX, 0FH
+            call WRITE_PIXEL
+            jmp debug_loop
+        ;end debug
         
         MARK_PLAY_OPTION ; menu inicia com a opcao Jogar selecionada
         xor BX, BX ; inicializar valor de BX para a proc do render_menu
@@ -475,8 +499,7 @@
                 jmp game_loop
                 
            game:
-                ;call CLEAR_SCREEN
-                call RENDER_GAME
+                call START_GAME
                 ;call DELAY
                 jmp game_loop
             end_prog:
