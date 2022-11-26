@@ -271,6 +271,53 @@
         ret
     endp
     
+    ; print string video mode
+    ; DL - coluna
+    ; SI - string offset
+    ; BL - color
+    ; CX - qtd chars
+    PRINT_STRING_V_MODE proc
+        PUSH_CONTEXT
+        print_char_v_mode:
+            mov  DH, 0   ; Row (fixo na 0)
+            mov  BH, 0    ; Display page
+            mov  AH, 02H  ; SetCursorPosition
+            int  10H
+            
+            lodsb ; AL <- [SI] ; SI++
+            mov  BH, 0 ; Display page
+            mov  AH, 0EH  ; int 10H - Teletype mode
+            int  10H
+            inc DL ; next column
+            loop print_char_v_mode 
+        POP_CONTEXT  
+        ret
+    endp
+    
+    ; printa o Tempo: usando a int 10H em teletype mode
+    PRINT_TIME_LABEL_v2 proc
+        PUSH_CONTEXT
+        mov  DL, 0 ; col
+        mov SI, offset time_label
+        mov CX, 9 ; chars
+        mov  BL, 0FH  ; Color WHITE
+        
+        print_char_v2:
+            mov  DH, 0   ; Row
+            mov  BH, 0    ; Display page
+            mov  AH, 02H  ; SetCursorPosition
+            int  10H
+            
+            lodsb ; Al <- [SI] ; SI++
+            mov  BH, 0 ; Display page
+            mov  AH, 0EH  ; int 10H - Teletype mode
+            int  10H
+            inc DL ; next column
+            loop print_char_v2   
+        POP_CONTEXT
+        ret      
+    endp
+    
     WRITE_SCORE_LABEL proc ; TODO!
         PUSH_CONTEXT
         mov CX, 0H ; X
@@ -464,6 +511,21 @@
         ret
     endp
     
+    esc_char_mem proc
+       push es
+        
+       mov ax, 0A000h
+       mov es, ax                      
+         
+       mov es:[di],bl      
+       inc di           
+       mov es:[di],bh    
+       inc di
+        
+       pop es
+       ret
+    endp
+    
     main:       
         mov AX, @DATA 
         mov DS, AX  
@@ -472,20 +534,6 @@
 
         SET_VIDEO_MODE
         HIDE_CURSOR
-        
-        ;debug
-        ;mov  ax, 1H  ; show mouse
-        ;int  33h
-        ;debug_loop:
-        ;    mov AX, 3
-         ;   int 33H
-          ;  cmp BX, 2
-           ; jne debug_loop
-            ;SHR CX, 1
-            ;mov BX, 0FH
-            ;call WRITE_PIXEL
-            ;jmp debug_loop
-        ;end debug
         
         MARK_PLAY_OPTION ; menu inicia com a opcao Jogar selecionada
         xor BX, BX ; inicializar valor de BX para a proc do render_menu
@@ -506,8 +554,18 @@
                 jmp game_loop
                 
            game:
-                call START_GAME
+                ;call START_GAME
                 ;call DELAY
+                mov DL, 0
+                mov SI, offset score_label
+                mov BL, 0FH
+                mov CX, 9
+                call PRINT_STRING_V_MODE
+                mov DL, 31
+                mov SI, offset time_label
+                call PRINT_STRING_V_MODE
+                call PRINT_HUNTER
+                call PRINT_GHOST
                 jmp game_loop
             end_prog:
         END_PROGRAM
