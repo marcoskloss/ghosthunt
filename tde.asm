@@ -162,35 +162,9 @@
     endm
 
     ; SI - mask offset
-    ; DX - Y
-    ; CX - X
-    PRINT_CHARACTER_LINE proc
-        PUSH_CONTEXT
-        
-        mov BX, 0A000H
-        mov ES, BX
-        
-        ; row + col * 320
-        mov AX, DX ; AX = Y
-        mov BX, 320
-        mul BX ; AX = AX * 320
-        add AX, CX ; AX += X
-    
-        mov CX, 12
-        mov DI, AX
-        loop_str:       
-            lodsb           ; AL = SI 
-            mov ES:[DI],AL  ; write pixel
-            inc DI
-            loop loop_str 
-        POP_CONTEXT
-        ret
-    endp
-    
-    ; SI - mask offset
     ; DX - X
     ; BX - Y
-    PRINT_CHARACTER_LINE_v2 proc
+    PRINT_CHARACTER_LINE proc
         PUSH_CONTEXT
         ; row + col * 320
         mov AX, BX ; AX = Y
@@ -223,7 +197,7 @@
         mov BX, [DI+2] ; y
         mov CX, 12
         draw_line:
-            call PRINT_CHARACTER_LINE_v2 ; line 1
+            call PRINT_CHARACTER_LINE ; line 1
             inc BX
             add SI, 12
             loop draw_line
@@ -231,31 +205,7 @@
         POP_CONTEXT
         ret
     endp
-    
-    ; CX - x
-    ; DX - y
-    ; BX - color
-    WRITE_PIXEL proc
-        PUSH_CONTEXT
-        push BX
-        
-        mov BX, 0A000H
-        mov ES, BX
-        
-        ; row + col * 320
-        mov AX, DX ; AX = Y
-        mov BX, 320
-        mul BX ; AX = AX * 320
-        add AX, CX ; AX += X
-        
-        pop BX ; to get color value
-        
-        mov DI, AX
-        mov ES:[DI], BL
-        POP_CONTEXT
-        ret
-    endp
-    
+
     ; BL cor
     ; CX qtd chars da string
     ; DH linha
@@ -294,76 +244,13 @@
         ret
     endp
     
-    ; printa o Tempo: usando a int 10H em teletype mode
-    PRINT_TIME_LABEL_v2 proc
-        PUSH_CONTEXT
-        mov  DL, 0 ; col
-        mov SI, offset time_label
-        mov CX, 9 ; chars
-        mov  BL, 0FH  ; Color WHITE
-        
-        print_char_v2:
-            mov  DH, 0   ; Row
-            mov  BH, 0    ; Display page
-            mov  AH, 02H  ; SetCursorPosition
-            int  10H
-            
-            lodsb ; Al <- [SI] ; SI++
-            mov  BH, 0 ; Display page
-            mov  AH, 0EH  ; int 10H - Teletype mode
-            int  10H
-            inc DL ; next column
-            loop print_char_v2   
-        POP_CONTEXT
-        ret      
+    WRITE_SCORE_LABEL proc ; TODO
     endp
     
-    WRITE_SCORE_LABEL proc ; TODO!
-        PUSH_CONTEXT
-        mov CX, 0H ; X
-        mov DX, 0H ; Y
-        
-        mov BX, 0A000H
-        mov ES, BX
-        
-        ; row + col * 320
-        mov AX, DX ; AX = Y
-        mov BX, 320
-        mul BX ; AX = AX * 320
-        add AX, CX ; AX += X
-    
-        mov DI, AX
-        mov CX, 9 ; chars        
-        cld ; clear DF
-        mov SI, offset score_label
-        mov AH, 0FH
-        
-        print_char:
-            lodsb               ; AL <- [SI]
-            mov ES:[DI], AL ; write char
-            inc DI
-            mov ES:[DI], AH ; color
-            inc DI
-            inc SI ; next byte
-            loop print_char
-       
-        POP_CONTEXT
-        ret
+    WRITE_TIME_LABEL proc ; TODO
     endp
     
-    WRITE_TIME_LABEL proc
-        PUSH_CONTEXT
-        mov BL, 0FH
-        mov CX, 9
-        mov DH, 0H
-        mov DL, 6FH
-        mov BP, offset time_label
-        call PRINT_STRING ; TOO proc para escrever string sem usar a int 10H => usar: rep & movsb ou loadb
-        POP_CONTEXT
-        ret
-    endp
-    
-    CLEAR_SCREEN proc ; TODO
+    CLEAR_SCREEN proc
         PUSH_CONTEXT
         SET_VIDEO_MODE
         POP_CONTEXT
@@ -462,18 +349,8 @@
     endp
     
     ; retorna: CX - mouse X, DX - mouse Y, AX = 1 clicou, AX = 0 nao clicou
+    ; TODO
     CHECK_MOUSE_CLICK proc ; TODO
-        mov AX, 3H
-        int 33H ; https://stanislavs.org/helppc/int_33-3.html
-        cmp BL, 2H
-        jne end_CHECK_MOUSE_CLICK
-        ; https://stackoverflow.com/questions/51001655/how-to-get-mouse-position-in-assembly-tasm
-        SHR CX, 1 ; CX = CX / 2 
-        mov AX, 1
-
-        end_CHECK_MOUSE_CLICK:
-        xor AX, AX
-        ret
     endp
 
     PRINT_GHOST proc
@@ -501,29 +378,12 @@
     START_GAME proc
         PUSH_CONTEXT
         
-        ;call WRITE_SCORE_LABEL
-        call WRITE_TIME_LABEL
         ;call PRINT_GHOST
         ;call PRINT_HUNTER
         ;call CHECK_MOUSE_CLICK
 
         POP_CONTEXT
         ret
-    endp
-    
-    esc_char_mem proc
-       push es
-        
-       mov ax, 0A000h
-       mov es, ax                      
-         
-       mov es:[di],bl      
-       inc di           
-       mov es:[di],bh    
-       inc di
-        
-       pop es
-       ret
     endp
     
     main:       
@@ -556,11 +416,13 @@
            game:
                 ;call START_GAME
                 ;call DELAY
+                ; printando o SCORE LABEL
                 mov DL, 0
                 mov SI, offset score_label
                 mov BL, 0FH
                 mov CX, 9
                 call PRINT_STRING_V_MODE
+                ; printando o TIME LABEL
                 mov DL, 31
                 mov SI, offset time_label
                 call PRINT_STRING_V_MODE
