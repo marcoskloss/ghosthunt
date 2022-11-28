@@ -44,6 +44,8 @@
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
      ghost_pos dw 10H,10H
+     ghost_line_1_pos_x_l dw 00H, 014H
+     ghost_line_1_pos_x_r dw 140H, 12CH
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -164,8 +166,11 @@
     ; SI - mask offset
     ; DX - X
     ; BX - Y
+    ; AL - pixel color
     PRINT_CHARACTER_LINE proc
         PUSH_CONTEXT
+        mov CL, AL ; CL = pixel color
+
         ; row + col * 320
         mov AX, BX ; AX = Y
         
@@ -177,11 +182,17 @@
         mul BX ; AX = AX * 320
         pop DX
         add AX, DX ; AX += X
-    
+
+        mov BL, CL ; BL = pixel color
+
         mov CX, 12
         mov DI, AX
         loop_str_v2:       
-            lodsb           ; AL = SI 
+            lodsb           ; AL = SI
+            cmp AL, 0H
+            je SKIP_CUSTOM_COLOR
+            mov AL, BL ; AL = pixel color
+            SKIP_CUSTOM_COLOR:
             mov ES:[DI],AL  ; write pixel
             inc DI
             loop loop_str_v2 
@@ -191,6 +202,7 @@
     
     ; DI - pos offset
     ; SI - mask offset
+    ; AL - pixel color
     PRINT_CHARACTER proc
         PUSH_CONTEXT
         mov DX, [DI] ; x
@@ -381,6 +393,7 @@
     CHECK_MOUSE_CLICK proc ; TODO
     endp
 
+    ; AL - ghost color (02H verde, 03H ciano, 04H vermelho, 05H magenta)
     PRINT_GHOST proc
         push SI
         push DI
@@ -395,19 +408,28 @@
     PRINT_HUNTER proc
         push SI
         push DI
+        push AX
         mov SI, offset hunter_mask
         mov DI, offset hunter_pos
+        mov AL, 0EH ; hunter color
         call PRINT_CHARACTER
+        pop AX
         pop DI
         pop SI
         ret
     endp
     
     START_GAME proc
+        PUSH_CONTEXT
+        
         call WRITE_SCORE_LABEL
         call WRITE_TIME_LABEL
         call PRINT_HUNTER
+        mov AL, 05H
         call PRINT_GHOST
+        ;call CHECK_MOUSE_CLICK
+
+        POP_CONTEXT
         ret
     endp
     
@@ -452,3 +474,13 @@ end main
 ; para fazer isso ? necess?rio mover todas as 10 linhas de 320px cada para SI
 ; EX: mov CX, 3200 (os 3200 px das 10 linhas da tela onde est?o os ghosts)
 ;     rep stosw ou loadsw seil? qual (o certo eh aquele que faz [DI] = [SI]
+
+; [] Proc para printar hunter passando a cor como parametro
+; [] movimentacao das linhas de ghosts:
+  ; ir? ter uma flag para cada linha - 'l' ou 'r', indicando o sentido do movimento
+  ; como nem todas as linhas vao se movimentar no mesmo sentido, ser? necess?rio 'movimentar' cada uma individualmente
+; [] sobre o delay:
+    ; VER: qual o efeito da proc DELAY na parte da deteccao do click do mouse
+    ; caso nao seja possivel usar a proc, daria pra usar uma variavel 'last_update', que ir? marcar o tempo da ultima atualizacao da tela (movimentacao dos bonecos),
+    ; ent?o, em toda proc que ir? movimentar um personagem ser? necess?rio verificar se o instante atual ? >= 500ms + 'last_update', 
+    ; caso seja verdadeiro, 'last_update' = now(), caso falso, a proc n?o atualiza a tela;
