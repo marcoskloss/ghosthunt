@@ -31,7 +31,7 @@
     time db 60
     
     hunter dw 099H,0BBH ;x,y
-    hunter_pos dw 99H,0BEH ;x,y
+    hunter_x_pos dw 99H ;x
     hunter_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 00H,0EH,0EH,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -43,7 +43,7 @@
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
-     ghost_pos dw 10H,10H
+     ghost_x_pos dw 10H
      ghost_line_1_pos_x_l dw 00H, 014H
      ghost_line_1_pos_x_r dw 140H, 12CH
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
@@ -200,14 +200,14 @@
         ret
     endp
     
-    ; DI - pos offset
+    ; DI - X pos offset
+    ; BX - Y
     ; SI - mask offset
     ; AL - pixel color
     PRINT_CHARACTER proc
         PUSH_CONTEXT
         mov DX, [DI] ; x
-        mov BX, [DI+2] ; y
-        mov CX, 12
+        mov CX, 10
         draw_line:
             call PRINT_CHARACTER_LINE ; line 1
             inc BX
@@ -394,12 +394,16 @@
     endp
 
     ; AL - ghost color (02H verde, 03H ciano, 04H vermelho, 05H magenta)
+    ; DI - ghost X pos offset
     PRINT_GHOST proc
         push SI
         push DI
+        push BX
         mov SI, offset ghost_mask
-        mov DI, offset ghost_pos
+        ;mov DI, offset ghost_x_pos
+        mov BX, 10H ; Y
         call PRINT_CHARACTER
+        pop BX
         pop DI
         pop SI
         ret
@@ -410,13 +414,25 @@
         push DI
         push AX
         mov SI, offset hunter_mask
-        mov DI, offset hunter_pos
+        mov DI, offset hunter_x_pos
+        mov BX, 0BEH ; Y
         mov AL, 0EH ; hunter color
         call PRINT_CHARACTER
         pop AX
         pop DI
         pop SI
         ret
+    endp
+
+    PRINT_GHOST_LINE_1 proc
+        mov CX, 2H
+        mov DI, offset ghost_line_1_pos_x_l
+        mov AL, 05H ; ghost color TODO!
+        print_ghost_line1:
+            call PRINT_GHOST
+            add DI, 2 ; next ghost X pos
+            loop print_ghost_line1
+        ret 
     endp
     
     START_GAME proc
@@ -425,8 +441,7 @@
         call WRITE_SCORE_LABEL
         call WRITE_TIME_LABEL
         call PRINT_HUNTER
-        mov AL, 05H
-        call PRINT_GHOST
+        call PRINT_GHOST_LINE_1
         ;call CHECK_MOUSE_CLICK
 
         POP_CONTEXT
