@@ -244,10 +244,38 @@
         ret
     endp
     
-    WRITE_SCORE_LABEL proc ; TODO
+    WRITE_SCORE_LABEL proc
+        push DX
+        push SI
+        push BX
+        push CX
+        mov DL, 0
+        mov SI, offset score_label
+        mov BL, 0FH
+        mov CX, 9
+        call PRINT_STRING_V_MODE
+        pop CX
+        pop BX
+        pop SI
+        pop DX
+        ret
     endp
     
-    WRITE_TIME_LABEL proc ; TODO
+    WRITE_TIME_LABEL proc
+        push DX
+        push SI
+        push BX
+        push CX
+        mov DL, 31
+        mov SI, offset time_label
+        mov BL, 0FH
+        mov CX, 9
+        call PRINT_STRING_V_MODE
+        pop CX
+        pop BX
+        pop SI
+        pop DX
+        ret
     endp
     
     CLEAR_SCREEN proc
@@ -376,13 +404,10 @@
     endp
     
     START_GAME proc
-        PUSH_CONTEXT
-        
-        ;call PRINT_GHOST
-        ;call PRINT_HUNTER
-        ;call CHECK_MOUSE_CLICK
-
-        POP_CONTEXT
+        call WRITE_SCORE_LABEL
+        call WRITE_TIME_LABEL
+        call PRINT_HUNTER
+        call PRINT_GHOST
         ret
     endp
     
@@ -414,20 +439,8 @@
                 jmp game_loop
                 
            game:
-                ;call START_GAME
+                call START_GAME
                 ;call DELAY
-                ; printando o SCORE LABEL
-                mov DL, 0
-                mov SI, offset score_label
-                mov BL, 0FH
-                mov CX, 9
-                call PRINT_STRING_V_MODE
-                ; printando o TIME LABEL
-                mov DL, 31
-                mov SI, offset time_label
-                call PRINT_STRING_V_MODE
-                call PRINT_HUNTER
-                call PRINT_GHOST
                 jmp game_loop
             end_prog:
         END_PROGRAM
