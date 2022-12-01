@@ -29,6 +29,8 @@
     
     time_label db 'Tempo: 60' ; TODO
     time db 60
+
+    video_mem_addr equ 0A000H
     
     hunter dw 099H,0BBH ;x,y
     hunter_x_pos dw 99H ;x
@@ -43,9 +45,10 @@
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
-     ghost_x_pos dw 10H
-     ghost_line_1_pos_x_l dw 00H, 014H
-     ghost_line_1_pos_x_r dw 140H, 12CH
+     initial_ghost_line_1_pos_x dw 00H
+     ghosts_line_1_pos_y equ 10H
+     ghosts_line_1_pos_x_l dw 00H, 014H
+     ghosts_line_1_pos_x_r dw 140H, 12CH
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -174,7 +177,7 @@
         ; row + col * 320
         mov AX, BX ; AX = Y
         
-        mov BX, 0A000H
+        mov BX, video_mem_addr
         mov ES, BX
         
         mov BX, 320
@@ -305,7 +308,7 @@
         xor cx, cx
         mov dx, 0C350h ; 50000 microsegundos
         mov ah, 86h
-        int 15h
+        int 15h ; http://vitaly_filatov.tripod.com/ng/asm/asm_026.13.html
         
         pop ax
         pop dx
@@ -401,7 +404,7 @@
         push BX
         mov SI, offset ghost_mask
         ;mov DI, offset ghost_x_pos
-        mov BX, 10H ; Y
+        mov BX, ghosts_line_1_pos_y ; Y
         call PRINT_CHARACTER
         pop BX
         pop DI
@@ -425,33 +428,52 @@
     endp
 
     PRINT_GHOST_LINE_1 proc
+        push CX
+        push DI
+        push AX
         mov CX, 2H
-        mov DI, offset ghost_line_1_pos_x_l
+        mov DI, offset ghosts_line_1_pos_x_l
         mov AL, 05H ; ghost color TODO!
         print_ghost_line1:
             call PRINT_GHOST
             add DI, 2 ; next ghost X pos
             loop print_ghost_line1
+        pop AX
+        pop DI
+        pop CX
         ret 
     endp
-    
-    START_GAME proc
-        PUSH_CONTEXT
-        
+
+    MOVE_1st_GHOST_LINE proc
+        mov BX, video_mem_addr
+        mov ES, BX
+        ; X + Y * 320
+        mov DI, 1540 ; ultimo pixel da linha (DESTINO)
+        mov SI, 153F ; ultimo pixel da linha - 1 (ORIGEM)
+
+        ; Fazer [DI]<-[SI]
+
+    endp
+
+    ; vai printar os benecos pela primeira vez em tela
+    SETUP_GAME_SCREEN proc
         call WRITE_SCORE_LABEL
         call WRITE_TIME_LABEL
         call PRINT_HUNTER
         call PRINT_GHOST_LINE_1
+        ret
+    endp
+    
+    START_GAME proc
         ;call CHECK_MOUSE_CLICK
-
-        POP_CONTEXT
+        call PRINT_HUNTER
         ret
     endp
     
     main:       
         mov AX, @DATA 
         mov DS, AX  
-        mov AX,@DATA 
+        mov AX, @DATA 
         mov ES, AX
 
         SET_VIDEO_MODE
@@ -476,6 +498,7 @@
                 jmp game_loop
                 
            game:
+                call SETUP_GAME_SCREEN
                 call START_GAME
                 ;call DELAY
                 jmp game_loop
