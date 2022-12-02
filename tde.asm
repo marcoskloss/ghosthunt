@@ -20,7 +20,8 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
+    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo]
+    game_1st_render db 1H
     screen_width dw 13FH
     screen_height dw 0C7H
     
@@ -47,8 +48,8 @@
      
      initial_ghost_line_1_pos_x dw 00H
      ghosts_line_1_pos_y equ 10H
-     ghosts_line_1_pos_x_l dw 00H, 014H
-     ghosts_line_1_pos_x_r dw 140H, 12CH
+     ghosts_line_1_pos_x_l dw 01H, 014H
+     ;ghosts_line_1_pos_x_r dw 140H, 12CH
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -444,15 +445,48 @@
         ret 
     endp
 
+     ; CX - x
+    ; DX - y
+    ; BX - color
+    WRITE_PIXEL proc
+        PUSH_CONTEXT
+        push BX
+        
+        mov BX, 0A000H
+        mov ES, BX
+        
+        ; row + col * 320
+        mov AX, DX ; AX = Y
+        mov BX, 320
+        mul BX ; AX = AX * 320
+        add AX, CX ; AX += X
+        
+        pop BX ; to get color value
+        
+        mov DI, AX
+        mov ES:[DI], BL
+        POP_CONTEXT
+        ret
+    endp
+    
     MOVE_1st_GHOST_LINE proc
+        push DS
+        PUSH_CONTEXT
         mov BX, video_mem_addr
         mov ES, BX
-        ; X + Y * 320
-        mov DI, 1540 ; ultimo pixel da linha (DESTINO)
-        mov SI, 153F ; ultimo pixel da linha - 1 (ORIGEM)
+        mov DS, BX
 
-        ; Fazer [DI]<-[SI]
-
+        mov SI, 22FDH ; antepenultimo pixel da linha (ORIGEM)
+        mov DI, 21BEH ; penultimo pixel da linha (DESTINO)
+        std ; DF = 1, vai decrementar SI e DI (direita pra esquerda)
+        mov CX, 3200 ; 10 x 320 (10 linhas)
+        MOVE_1st_GHOST_LINE_LOOP:
+          movsb ; ES:DI <- DS:SI
+          loop MOVE_1st_GHOST_LINE_LOOP
+          
+        POP_CONTEXT
+        pop DS
+        ret
     endp
 
     ; vai printar os benecos pela primeira vez em tela
@@ -466,7 +500,7 @@
     
     START_GAME proc
         ;call CHECK_MOUSE_CLICK
-        call PRINT_HUNTER
+        call MOVE_1st_GHOST_LINE
         ret
     endp
     
@@ -498,9 +532,13 @@
                 jmp game_loop
                 
            game:
+                cmp game_1st_render, 01H
+                jne game_
+                mov game_1st_render, 00H
                 call SETUP_GAME_SCREEN
-                call START_GAME
-                ;call DELAY
+                game_: 
+                  call START_GAME
+                  ;call DELAY
                 jmp game_loop
             end_prog:
         END_PROGRAM
