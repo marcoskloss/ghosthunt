@@ -581,8 +581,6 @@
         jbe GO_TO_SHOOT_MIDDLE
         jmp GO_TO_SHOOT_RIGHT
         
-        ;
-        
         GO_TO_SHOOT_LEFT:
             mov AX, 1H
             jmp SHOOT_LABEL
@@ -659,20 +657,13 @@
             end_prog:
         END_PROGRAM
 end main
-; PARA FAZER A MOVIMEMTACAO DOS GHOSTS:
-; NAO EH NECESSARIO UMA PROC PRA APAGAR A TELA INTEIRA!
-; fazer: DI recebe a prox posicao (x) e SI tem a posicao atual (x)]
-; EX: DI = 50 SI = 51 (escrever todos os ghosts partindo de DI=50, andar?o 1px pra tr?s
-; para fazer isso ? necess?rio mover todas as 10 linhas de 320px cada para SI
-; EX: mov CX, 3200 (os 3200 px das 10 linhas da tela onde est?o os ghosts)
-;     rep stosw ou loadsw seil? qual (o certo eh aquele que faz [DI] = [SI]
 
-; [] Proc para printar hunter passando a cor como parametro
-; [] movimentacao das linhas de ghosts:
-  ; ir? ter uma flag para cada linha - 'l' ou 'r', indicando o sentido do movimento
-  ; como nem todas as linhas vao se movimentar no mesmo sentido, ser? necess?rio 'movimentar' cada uma individualmente
-; [] sobre o delay:
-    ; VER: qual o efeito da proc DELAY na parte da deteccao do click do mouse
-    ; caso nao seja possivel usar a proc, daria pra usar uma variavel 'last_update', que ir? marcar o tempo da ultima atualizacao da tela (movimentacao dos bonecos),
-    ; ent?o, em toda proc que ir? movimentar um personagem ser? necess?rio verificar se o instante atual ? >= 500ms + 'last_update', 
-    ; caso seja verdadeiro, 'last_update' = now(), caso falso, a proc n?o atualiza a tela;
+; [] movimentacao do tiro (lifespan, direcao, colisao, pontuacao)
+; [] movimentacao da linha de ghosts na tela inicial
+; [] tres linhas de ghosts de linhas diferentes na tela do jogo
+; [] mostrar pontuacao real em tela
+; [] timer
+;       timer inicialmente comeca com 120
+;       a cada tick do jogo (500ms em 500ms) o timer ? decrementado em 1
+;       quando timer == 0: fim de jogo
+; [] tela de fim de jogo
