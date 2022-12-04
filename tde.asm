@@ -22,8 +22,6 @@
     options_len equ $-options
     current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo]
     game_1st_render db 1H
-    screen_width dw 13FH
-    screen_height dw 0C7H
     
     score_label db 'Score: 50' ; TODO
     score dw 0
@@ -46,10 +44,10 @@
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
-     initial_ghost_line_1_pos_x dw 00H
+     ghost_line_1_direction db 1H ; 0H - move to right, 1H - move to left
      ghosts_line_1_pos_y equ 10H
-     ghosts_line_1_pos_x_l dw 01H, 014H
-     ;ghosts_line_1_pos_x_r dw 140H, 12CH
+     ghosts_line_1_pos_x_r dw 11FH, 133H ; esse eh o da diraita
+     ghosts_line_1_pos_x_l dw 1H, 14H ; TA TROCADO! esse eh o da esquerda
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -469,27 +467,77 @@
         ret
     endp
     
-    MOVE_1st_GHOST_LINE proc
+    ; Configura a variavel ghost_line_1_direction indicando o sentido do movimento
+    CONF_MOVE_GHOST_LINE1:
+        push BX
+        push ES
+        push AX
+        push DI
+        mov BX, video_mem_addr
+        mov ES, BX
+        
+        ; Se px inicio != preto
+            ; entao: setar movimentacao para direita
+        mov AX, 1901H
+        mov DI, AX
+        cmp ES:[DI], 0H
+        je NEXT_PX_TEST_LINE1
+        mov ghost_line_1_direction, 0H
+        
+        ; Se px fim != preto
+            ; entao: setar movimentacao para esquerda
+        NEXT_PX_TEST_LINE1:
+        mov AX, 207EH
+        mov DI, AX
+        cmp ES:[DI], 0H
+        je END_PROC_CONF_MOVE_GHOST_LINE1
+        mov ghost_line_1_direction, 1H
+        
+        END_PROC_CONF_MOVE_GHOST_LINE1:
+        pop DI
+        pop AX
+        pop ES
+        pop BX
+        ret
+    endp
+    
+    ; Realiza o movimento conforme o valor de ghost_line_1_direction
+    MOVE_GHOST_LINE1:
         push DS
         PUSH_CONTEXT
+      
+        ; Caso movimento para esquerda
+        cld
+        mov SI, 1402H ; terceiro pixel da linha superior (ORIGEM)
+        mov DI, 1401H ; segundo pixel da linha superior (DESTINO)
+
+        cmp ghost_line_1_direction, 1H
+        je PRE_MOVE_GHOST_LINE1
+        
+        ; Caso movimento para a direita
+        std
+        mov SI, 207DH ; antepenultimo pixel da linha (ORIGEM)
+        mov DI, 207EH ; penultimo pixel da linha (DESTINO)
+        
+        
+        PRE_MOVE_GHOST_LINE1:
+        
         mov BX, video_mem_addr
         mov ES, BX
         mov DS, BX
-
-        mov SI, 22FDH ; antepenultimo pixel da linha (ORIGEM)
-        mov DI, 21BEH ; penultimo pixel da linha (DESTINO)
-        std ; DF = 1, vai decrementar SI e DI (direita pra esquerda)
+        
         mov CX, 3200 ; 10 x 320 (10 linhas)
-        MOVE_1st_GHOST_LINE_LOOP:
+        LOOP_MOVE_GHOST_LINE1:
           movsb ; ES:DI <- DS:SI
-          loop MOVE_1st_GHOST_LINE_LOOP
-          
+          loop LOOP_MOVE_GHOST_LINE1
+        
+          dbg:
         POP_CONTEXT
         pop DS
         ret
     endp
 
-    ; vai printar os benecos pela primeira vez em tela
+    ; vai printar os bonecos pela primeira vez em tela
     SETUP_GAME_SCREEN proc
         call WRITE_SCORE_LABEL
         call WRITE_TIME_LABEL
@@ -500,7 +548,9 @@
     
     START_GAME proc
         ;call CHECK_MOUSE_CLICK
-        call MOVE_1st_GHOST_LINE
+        ;call MOVE_1st_GHOST_LINE
+        call CONF_MOVE_GHOST_LINE1
+        call MOVE_GHOST_LINE1
         ret
     endp
     
@@ -537,8 +587,8 @@
                 mov game_1st_render, 00H
                 call SETUP_GAME_SCREEN
                 game_: 
-                  call START_GAME
-                  ;call DELAY
+                    call START_GAME
+                    call DELAY
                 jmp game_loop
             end_prog:
         END_PROGRAM
