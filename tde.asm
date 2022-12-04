@@ -389,11 +389,6 @@
         POP_CONTEXT
         ret
     endp
-    
-    ; retorna: CX - mouse X, DX - mouse Y, AX = 1 clicou, AX = 0 nao clicou
-    ; TODO
-    CHECK_MOUSE_CLICK proc ; TODO
-    endp
 
     ; AL - ghost color (02H verde, 03H ciano, 04H vermelho, 05H magenta)
     ; DI - ghost X pos offset
@@ -536,21 +531,92 @@
         pop DS
         ret
     endp
-
+    
+    SETUP_MOUSE proc
+        push AX
+        mov  AX, 1H  ; show mouse
+        int  33H
+        pop AX
+        ret
+    endp
+    
+    ; retorna: CX - mouse X, AX = 1 clicou, AX = 0 nao clicou
+    CHECK_MOUSE_CLICK proc
+        push DX
+        push BX
+        mov AX, 3
+        int 33H ; https://stanislavs.org/helppc/int_33-3.html
+        
+        cmp BX, 2
+        jne END_CHECK_MOUSE_CLICK
+        
+        SHR CX, 1
+        mov AX, 1H
+        pop BX
+        pop DX
+        ret
+        
+        END_CHECK_MOUSE_CLICK:
+            xor AX, AX
+            pop BX
+            pop DX
+            ret
+    endp
+    
+    ; TODO
+    ; recebe: AX - 1H esquerda, 2H meio, 3H direita
+    SHOOT proc
+        ret
+    endp
+   
+    ; recebe: AX - 1H ou 0H (atirou ou nao atirou)
+    ;         CX - mouse X  
+    CHECK_SHOOT proc
+        cmp AX, 0H
+        je END_SHOOT_PROC
+   
+        cmp CX, 106
+        jbe GO_TO_SHOOT_LEFT
+        cmp CX, 212
+        jbe GO_TO_SHOOT_MIDDLE
+        jmp GO_TO_SHOOT_RIGHT
+        
+        ;
+        
+        GO_TO_SHOOT_LEFT:
+            mov AX, 1H
+            jmp SHOOT_LABEL
+            
+        GO_TO_SHOOT_MIDDLE:
+            mov AX, 2H
+            jmp SHOOT_LABEL
+            
+        GO_TO_SHOOT_RIGHT:
+            mov AX, 3H
+            jmp SHOOT_LABEL
+        
+        SHOOT_LABEL:
+            call SHOOT    
+    
+        END_SHOOT_PROC:
+        ret    
+    endp
+    
     ; vai printar os bonecos pela primeira vez em tela
     SETUP_GAME_SCREEN proc
         call WRITE_SCORE_LABEL
         call WRITE_TIME_LABEL
         call PRINT_HUNTER
         call PRINT_GHOST_LINE_1
+        call SETUP_MOUSE
         ret
     endp
     
     START_GAME proc
-        ;call CHECK_MOUSE_CLICK
-        ;call MOVE_1st_GHOST_LINE
         call CONF_MOVE_GHOST_LINE1
         call MOVE_GHOST_LINE1
+        call CHECK_MOUSE_CLICK
+        call CHECK_SHOOT
         ret
     endp
     
