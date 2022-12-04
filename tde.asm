@@ -31,6 +31,10 @@
 
     video_mem_addr equ 0A000H
     
+    projectile_x dw 9FH
+    projectile_y dw 0BBH
+    projectile_direction db 0H ; 0H sem projetil ativo, 1H esquerda, 2H meio, 3H direita
+    
     hunter dw 099H,0BBH ;x,y
     hunter_x_pos dw 99H ;x
     hunter_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
@@ -438,14 +442,14 @@
         ret 
     endp
 
-     ; CX - x
+    ; CX - x
     ; DX - y
     ; BX - color
     WRITE_PIXEL proc
         PUSH_CONTEXT
         push BX
         
-        mov BX, 0A000H
+        mov BX, video_mem_addr
         mov ES, BX
         
         ; row + col * 320
@@ -459,6 +463,32 @@
         mov DI, AX
         mov ES:[DI], BL
         POP_CONTEXT
+        ret
+    endp
+
+    ; recebe:  CX - pos X do pixel a ser lido
+    ;          DX - pos Y do pixel a ser lido
+    ; retorna: BX - cor do pixel lido
+    READ_PIXEL proc
+        push AX
+        push DI
+        push ES
+
+        mov BX, video_mem_addr
+        mov ES, BX
+
+        ; row + col * 320
+        mov AX, DX ; AX = Y
+        mov BX, 320
+        mul BX ; AX = AX * 320
+        add AX, CX ; AX += X
+         
+        mov DI, AX
+        mov BX, ES:[DI]
+
+        pop ES
+        pop DI
+        pop AX
         ret
     endp
     
@@ -475,7 +505,8 @@
             ; entao: setar movimentacao para direita
         mov AX, 1901H
         mov DI, AX
-        cmp ES:[DI], 0H
+        mov AX, 0H
+        cmp ES:[DI], AX
         je NEXT_PX_TEST_LINE1
         mov ghost_line_1_direction, 0H
         
@@ -484,7 +515,8 @@
         NEXT_PX_TEST_LINE1:
         mov AX, 207EH
         mov DI, AX
-        cmp ES:[DI], 0H
+        mov AX, 0H
+        cmp ES:[DI], AX
         je END_PROC_CONF_MOVE_GHOST_LINE1
         mov ghost_line_1_direction, 1H
         
@@ -549,8 +581,12 @@
         
         cmp BX, 2
         jne END_CHECK_MOUSE_CLICK
+
+        cmp projectile_direction, 0H
+        jne END_CHECK_MOUSE_CLICK ; caso ja tenha um disparo em andamento
+                                  ; agir como se nao houvesse clique no mouse
         
-        SHR CX, 1
+        shr CX, 1
         mov AX, 1H
         pop BX
         pop DX
@@ -563,17 +599,97 @@
             ret
     endp
     
+    CLEAR_PREV_PROJECTILE proc
+        push CX
+        push DX
+        push BX
+
+        ; sobrescrevemos um quadrado de 3x3 px, onde o px do meio eh a posicao anterior do projetil. Explicado em *1
+
+        mov CX, projectile_x
+        mov DX, projectile_y
+        mov BX, 0H
+        call WRITE_PIXEL ; [1][1]
+
+        dec DX
+        call WRITE_PIXEL ; 1,0
+        dec CX
+        call WRITE_PIXEL ; 0,0
+        inc DX
+        call WRITE_PIXEL ; 0,1
+        inc DX
+        call WRITE_PIXEL ; 0,2
+        inc CX
+        call WRITE_PIXEL ; 1,2
+        inc CX
+        call WRITE_PIXEL ; 2,2
+        dec DX
+        call WRITE_PIXEL ; 2,1
+        dec DX
+        call WRITE_PIXEL ; 2,0
+
+        pop BX
+        pop DX
+        pop CX
+        ret
+    endp
+
+    ; retorna: CX - prox posicao X
+    ;          DX - prox posicao Y
+    GET_NEXT_PROJECTILE_POSITION_VALUES proc
+        mov CX, projectile_x
+        mov DX, projectile_y
+        sub DX, 2H
+
+        cmp projectile_direction, 2H
+
+        je END_PROC_GNPPV ; meio
+        jb PROJ_TO_LEFT
+        jmp PROJ_TO_RIGHT
+
+        PROJ_TO_LEFT:
+            dec CX
+            jmp END_PROC_GNPPV
+
+        PROJ_TO_RIGHT:
+            inc CX
+
+        END_PROC_GNPPV:
+            ret
+    endp
+    
     ; TODO
-    ; recebe: AX - 1H esquerda, 2H meio, 3H direita
     SHOOT proc
+        PUSH_CONTEXT
+        ; todo: logica para somente um tiro por vez
+        ; todo: logica para colisao
+        cmp projectile_direction, 0H
+        je END_SHOOT_PROC ; sem disparo ativo
+
+        ; sobrescrevendo a posicao anterior com um px preto
+        call CLEAR_PREV_PROJECTILE
+
+        ; CX e DX recebem X e Y da prox posicao do projetil
+        call GET_NEXT_PROJECTILE_POSITION_VALUES
+
+        mov projectile_x, CX
+        mov projectile_y, DX
+
+        mov BX, 0FH
+        call WRITE_PIXEL
+
+        END_SHOOT_PROC:
+        POP_CONTEXT
         ret
     endp
    
     ; recebe: AX - 1H ou 0H (atirou ou nao atirou)
     ;         CX - mouse X  
     CHECK_SHOOT proc
+        PUSH_CONTEXT
+
         cmp AX, 0H
-        je END_SHOOT_PROC
+        je SHOOT_LABEL ; nao altera a direcao do projetil
    
         cmp CX, 106
         jbe GO_TO_SHOOT_LEFT
@@ -582,22 +698,55 @@
         jmp GO_TO_SHOOT_RIGHT
         
         GO_TO_SHOOT_LEFT:
-            mov AX, 1H
+            mov projectile_direction, 1H
             jmp SHOOT_LABEL
             
         GO_TO_SHOOT_MIDDLE:
-            mov AX, 2H
+            mov projectile_direction, 2H
             jmp SHOOT_LABEL
             
         GO_TO_SHOOT_RIGHT:
-            mov AX, 3H
+            mov projectile_direction, 3H
             jmp SHOOT_LABEL
         
         SHOOT_LABEL:
             call SHOOT    
-    
-        END_SHOOT_PROC:
+        POP_CONTEXT
         ret    
+    endp
+
+    INCREMENT_SCORE proc
+        END_PROGRAM
+        ret
+    endp
+
+    CHECK_COLISIONS proc
+        PUSH_CONTEXT
+        cmp projectile_y, 0AH
+        jbe RESET_PROJECTILE
+
+        call GET_NEXT_PROJECTILE_POSITION_VALUES
+        call READ_PIXEL
+        cmp BX, 0H
+        je END_CHECK_COLISIONS_PROC ; caso o prox pixel do projetil seja preto nao houve colisao
+
+        call INCREMENT_SCORE
+        jmp END_CHECK_COLISIONS_PROC
+
+        RESET_PROJECTILE:
+            ; sobrescrevendo a posicao anterior com um pixel preto
+            mov CX, projectile_x
+            mov DX, projectile_y
+            mov BX, 0H
+            call WRITE_PIXEL
+            ; resetando variaveis para o estado inicial
+            mov projectile_x, 9FH
+            mov projectile_y, 0BBH
+            mov projectile_direction, 0H
+
+        END_CHECK_COLISIONS_PROC:
+        POP_CONTEXT
+        ret
     endp
     
     ; vai printar os bonecos pela primeira vez em tela
@@ -615,6 +764,7 @@
         call MOVE_GHOST_LINE1
         call CHECK_MOUSE_CLICK
         call CHECK_SHOOT
+        call CHECK_COLISIONS
         ret
     endp
     
@@ -667,3 +817,5 @@ end main
 ;       a cada tick do jogo (500ms em 500ms) o timer ? decrementado em 1
 ;       quando timer == 0: fim de jogo
 ; [] tela de fim de jogo
+
+; *1: isso porque tem um bug quando o proj?til passa pela linha dos ghosts, como a movimenta??o dos ghosts ? somente 'empurrando'  para o lado os px em mem?ria, o px do proj?til tamb?m ? empurrado
