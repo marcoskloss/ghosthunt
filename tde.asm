@@ -35,7 +35,6 @@
     projectile_y dw 0BBH
     projectile_direction db 0H ; 0H sem projetil ativo, 1H esquerda, 2H meio, 3H direita
     
-    hunter dw 099H,0BBH ;x,y
     hunter_x_pos dw 99H ;x
     hunter_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
@@ -50,8 +49,8 @@
      
      ghost_line_1_direction db 1H ; 0H - move to right, 1H - move to left
      ghosts_line_1_pos_y equ 10H
-     ghosts_line_1_pos_x_r dw 11FH, 133H ; esse eh o da diraita
-     ghosts_line_1_pos_x_l dw 1H, 14H ; TA TROCADO! esse eh o da esquerda
+     ghosts_line_1_pos_x_r dw 11FH, 133H
+     ghosts_line_1_pos_x_l dw 1H, 22H
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -473,6 +472,8 @@
         push AX
         push DI
         push ES
+        push DX
+        push CX
 
         mov BX, video_mem_addr
         mov ES, BX
@@ -486,6 +487,8 @@
         mov DI, AX
         mov BX, ES:[DI]
 
+        pop CX
+        pop DX
         pop ES
         pop DI
         pop AX
@@ -609,7 +612,7 @@
         mov CX, projectile_x
         mov DX, projectile_y
         mov BX, 0H
-        call WRITE_PIXEL ; [1][1]
+        call WRITE_PIXEL ; 1,1
 
         dec DX
         call WRITE_PIXEL ; 1,0
@@ -658,11 +661,8 @@
             ret
     endp
     
-    ; TODO
     SHOOT proc
         PUSH_CONTEXT
-        ; todo: logica para somente um tiro por vez
-        ; todo: logica para colisao
         cmp projectile_direction, 0H
         je END_SHOOT_PROC ; sem disparo ativo
 
@@ -715,34 +715,81 @@
         ret    
     endp
 
-    INCREMENT_SCORE proc
-        END_PROGRAM
+    RESET_PROJECTILE proc
+        PUSH_CONTEXT
+        mov CX, projectile_x
+        mov DX, projectile_y
+        mov BX, 0H
+        call WRITE_PIXEL
+        ; resetando variaveis para o estado inicial
+        mov projectile_x, 9FH
+        mov projectile_y, 0BBH
+        mov projectile_direction, 0H
+        POP_CONTEXT
+        ret
+    endp 
+
+    ; TODO
+    ; recebe: BX - cor do pixel do ghost que foi atingido
+    ;         CX - posicao X do projetil
+    ;         DX - posicao Y do projetil
+    GHOST_HIT proc
+        PUSH_CONTEXT
+        ; incrementar o score com base na cor de BX
+        ; remover o fantasma atingido de memoria
+        ; para remover deve ser pintado de preto uma area de NxN com CX,DX ao centro
+        ;   tipo como nos damos clear no projetil da posicao anterior
+        ;   so que aqui o tamanho da area a ser limpada (N) ainda nao sabemos
+        ;   confirmar qual a distancia entre ghosts (l? no AVA) para conseguir pensar no valor de N
+        
+        ; removendo o ghost atingido de memoria, os px sobrescritos em preto serao:
+        ;  12 para a direita e 12 para esquerda a partir do CX
+        ;  10 para cima a partir de DX
+        
+        mov AX, CX ; AX = X
+        sub AX, 15 ; AX = X - 12
+        add DX, 8 ; Y += 8
+        mov CX, 30 ; contador de cols
+        LOOP_CLEAR_COL:
+            push DX ; salvando o valor inicial de Y
+            mov BX, 0 ; zerando o contador de rows
+            LOOP_CLEAR_ROW:
+                dec DX ; Y -= 1 (prox row)
+                push BX ; salvando BX
+                push CX ; salvando CX
+                mov BX, 0H
+                mov CX, AX ; CX = X
+                call WRITE_PIXEL
+                pop CX ; restaurando
+                pop BX ; restaurando
+                inc BX ; prox row
+                cmp BX, 18
+                jbe LOOP_CLEAR_ROW ; loop ate completar 10 rows
+            inc AX ; prox col
+            pop DX ; restaurando o valor inicial de Y
+            loop LOOP_CLEAR_COL
+
+        call RESET_PROJECTILE
+
+        POP_CONTEXT
         ret
     endp
 
     CHECK_COLISIONS proc
         PUSH_CONTEXT
         cmp projectile_y, 0AH
-        jbe RESET_PROJECTILE
+        jbe GO_TO_RESET_PROJECTILE
 
         call GET_NEXT_PROJECTILE_POSITION_VALUES
         call READ_PIXEL
         cmp BX, 0H
-        je END_CHECK_COLISIONS_PROC ; caso o prox pixel do projetil seja preto nao houve colisao
+        je END_CHECK_COLISIONS_PROC ; caso o prox pixel do projetil eh preto nao houve colisao
 
-        call INCREMENT_SCORE
+        call GHOST_HIT
         jmp END_CHECK_COLISIONS_PROC
 
-        RESET_PROJECTILE:
-            ; sobrescrevendo a posicao anterior com um pixel preto
-            mov CX, projectile_x
-            mov DX, projectile_y
-            mov BX, 0H
-            call WRITE_PIXEL
-            ; resetando variaveis para o estado inicial
-            mov projectile_x, 9FH
-            mov projectile_y, 0BBH
-            mov projectile_direction, 0H
+        GO_TO_RESET_PROJECTILE:
+            call RESET_PROJECTILE
 
         END_CHECK_COLISIONS_PROC:
         POP_CONTEXT
@@ -800,7 +847,7 @@
                 jne game_
                 mov game_1st_render, 00H
                 call SETUP_GAME_SCREEN
-                game_: 
+                game_:
                     call START_GAME
                     call DELAY
                 jmp game_loop
