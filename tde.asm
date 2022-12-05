@@ -29,8 +29,9 @@
     score_col db 7
     score dw 0
     
-    time_label db 'TEMPO: 60' ; TODO
-    time db 120
+    time_label db 'TEMPO: ' ; TODO
+    time_col db 38
+    time dw 301
 
     video_mem_addr equ 0A000H
     
@@ -340,12 +341,7 @@
     WRITE_SCORE proc
         PUSH_CONTEXT
         mov score_col, 7 ; reset na posicao
-        ; apagando valor anterior
-        ;mov DL, 7
-        ;mov SI, offset blank_spaces
-        ;mov BL, 0H
-        ;mov CX, 4
-        ;call PRINT_STRING_V_MODE
+        
         mov AX, score
         mov DI, offset score_col
         call PRINT_GREEN_UINT16
@@ -362,12 +358,63 @@
         mov DL, 31
         mov SI, offset time_label
         mov BL, 0FH
-        mov CX, 9
+        mov CX, 7
         call PRINT_STRING_V_MODE
         pop CX
         pop BX
         pop SI
         pop DX
+        ret
+    endp
+    
+    ; recebe: AX - valor do timer
+    WRITE_TIME proc
+        PUSH_CONTEXT
+        mov time_col, 38 ; reset na posicao
+        
+        cmp AX, 10
+        jae PRINT_TIME 
+        ; adicionando 0 (zero) a esquerda pq o time agora so tem 1 digito
+        push AX
+        mov DL, time_col
+        mov AL, '0'
+        mov BL, 2H
+        call PRINT_CHAR
+        inc time_col
+        pop AX
+        
+        PRINT_TIME:
+        mov DI, offset time_col
+        call PRINT_GREEN_UINT16
+
+        POP_CONTEXT
+        ret
+    endp
+    
+    UPDATE_TIME proc
+        PUSH_CONTEXT
+        dec time ; a cada 50ms (tempo do delay) a var time ? decrementada em 1
+        cmp time, 0H
+        je THE_END
+        
+        xor DX, DX
+        
+        ; Se time / 20 eh uma divisao inteira, entao atuailzar o time em tela
+        mov AX, time
+        mov BX, 20
+        div BX
+        cmp DX, 0H
+        jne END_UPDATE_TIME_PROC ; se nao for divisao inteira, nao atualizar em tela
+        
+        call WRITE_TIME
+        jmp END_UPDATE_TIME_PROC
+        
+        THE_END:
+            ; TODO! setar para direcionar para tela de end game
+            END_PROGRAM
+            
+        END_UPDATE_TIME_PROC:
+        POP_CONTEXT
         ret
     endp
     
@@ -894,13 +941,14 @@
     SETUP_GAME_SCREEN proc
         call WRITE_SCORE_LABEL
         call WRITE_SCORE
-        call WRITE_SCORE
 
         call WRITE_TIME_LABEL
-
+        call UPDATE_TIME
+        
         call PRINT_HUNTER
         call PRINT_GHOST_LINE_1
         call SETUP_MOUSE
+        
         ret
     endp
     
@@ -924,7 +972,7 @@
         
         MARK_PLAY_OPTION ; menu inicia com a opcao Jogar selecionada
         xor BX, BX ; inicializar valor de BX para a proc do render_menu
-                
+        
         game_loop:
             cmp current_screen, 0H
             je menu
@@ -948,6 +996,7 @@
                 game_:
                     call START_GAME
                     call DELAY
+                    call UPDATE_TIME
                 jmp game_loop
             end_prog:
         END_PROGRAM
