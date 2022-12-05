@@ -20,7 +20,7 @@
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
-    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo]
+    current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     game_1st_render db 1H
     
     blank_spaces db '    '
@@ -29,9 +29,9 @@
     score_col db 7
     score dw 0
     
-    time_label db 'TEMPO: ' ; TODO
+    time_label db 'TEMPO: '
     time_col db 38
-    time dw 301
+    time dw 1201
 
     video_mem_addr equ 0A000H
     
@@ -852,7 +852,6 @@
         ret
     endp 
 
-    ; TODO
     ; recebe: BL - cor do pixel do ghost que foi atingido
     ;         CX - posicao X do projetil
     ;         DX - posicao Y do projetil
@@ -1002,14 +1001,18 @@
         END_PROGRAM
 end main
 
-; [] movimentacao do tiro (lifespan, direcao, colisao, pontuacao)
-; [] movimentacao da linha de ghosts na tela inicial
-; [] tres linhas de ghosts de linhas diferentes na tela do jogo
-; [] mostrar pontuacao real em tela
-; [] timer
-;       timer inicialmente comeca com 120
-;       a cada tick do jogo (500ms em 500ms) o timer ? decrementado em 1
-;       quando timer == 0: fim de jogo
-; [] tela de fim de jogo
+; TODOS
+; [] 3 linhas de ghosts na tela de jogo (com cores diferentes)
+;       usar as procs que ja temos
+; [] movimentacao ghosts tela inicial
+;       uma adaptacao da movimentacao dos ghosts na tela do jogo
+; [] tela de end game
+;       semelhante a tela inicial, porem vai ser necessario indicar o score
+; [] redirecionamento quando o timer zerar
+;       setar a var global para o valor correspondente
+; [] manter track da quantidade de ghosts por linha, e, quando todos os ghosts de uma linha forem eliminados, printar todos novamente;
+;       talvez um contador global de ghosts para cada linha
+;       a cada hit, decrementar o contador correspondente conforme a cor do ghost
+;       caso contador == 0: chamar a proc que printa a linha de ghosts correspondente
 
 ; *1: isso porque tem um bug quando o proj?til passa pela linha dos ghosts, como a movimenta??o dos ghosts ? somente 'empurrando'  para o lado os px em mem?ria, o px do proj?til tamb?m ? empurrado
