@@ -23,11 +23,14 @@
     current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo]
     game_1st_render db 1H
     
-    score_label db 'Score: 50' ; TODO
+    blank_spaces db '    '
+
+    score_label db 'SCORE: '
+    score_col db 7
     score dw 0
     
-    time_label db 'Tempo: 60' ; TODO
-    time db 60
+    time_label db 'TEMPO: 60' ; TODO
+    time db 120
 
     video_mem_addr equ 0A000H
     
@@ -252,14 +255,70 @@
             int  10H
             
             lodsb ; AL <- [SI] ; SI++
-            mov  BH, 0 ; Display page
-            mov  AH, 0EH  ; int 10H - Teletype mode
-            int  10H
+            call PRINT_CHAR
             inc DL ; next column
             loop print_char_v_mode 
         POP_CONTEXT  
         ret
     endp
+
+    ; recebe: DL - coluna    
+    ;         AL - char
+    ;         BL - cor
+    PRINT_CHAR proc
+        PUSH_CONTEXT
+        mov  DH, 0   ; Row (fixo na 0)
+        mov  BH, 0    ; Display page
+        mov  AH, 02H  ; SetCursorPosition
+        int  10H
+        mov  BH, 0 ; Display page
+        mov  AH, 0EH  ; int 10H - Teletype mode
+        int  10H
+        POP_CONTEXT
+        ret
+    endp  
+
+    ; recebe: AX - uint
+    ;         DI - offset do valor da coluna
+    PRINT_GREEN_UINT16 proc 
+        PUSH_CONTEXT
+        
+        mov BX, 10   ; divis?es sucessivas por 10
+        xor CX, CX   ; contador de d?gitos
+        
+    LACO_DIV:
+        xor DX, DX   ; zerar DX pois o dividendo ? DXAX
+        div BX       ; divis?o para separar o d?gito em DX
+        
+        push DX      ; empilhar o d?gito
+        inc CX       ; incrementa o contador de d?gitos
+        
+        cmp AX, 0    ; AX chegou a 0?
+        jnz LACO_DIV ; enquanto AX diferente de 0 salte para LACO_DIV
+            
+    LACO_ESCDIG:   
+        pop DX       ; desempilha o d?gito    
+        add DL, '0'  ; converter o d?gito para ASCII
+        
+        push AX
+        push BX
+        push DX
+
+        mov AL, DL
+        mov DL, [DI]
+        mov BL, 2H ; verde
+        call PRINT_CHAR
+        inc [DI] ; warning
+
+        pop DX
+        pop BX            
+        pop AX
+
+        loop LACO_ESCDIG ; decrementa o contador de d?gitos
+        
+        POP_CONTEXT
+        ret     
+    endp  
     
     WRITE_SCORE_LABEL proc
         push DX
@@ -269,12 +328,29 @@
         mov DL, 0
         mov SI, offset score_label
         mov BL, 0FH
-        mov CX, 9
+        mov CX, 7
         call PRINT_STRING_V_MODE
         pop CX
         pop BX
         pop SI
         pop DX
+        ret
+    endp
+    
+    WRITE_SCORE proc
+        PUSH_CONTEXT
+        mov score_col, 7 ; reset na posicao
+        ; apagando valor anterior
+        ;mov DL, 7
+        ;mov SI, offset blank_spaces
+        ;mov BL, 0H
+        ;mov CX, 4
+        ;call PRINT_STRING_V_MODE
+        mov AX, score
+        mov DI, offset score_col
+        call PRINT_GREEN_UINT16
+
+        POP_CONTEXT
         ret
     endp
     
@@ -467,7 +543,7 @@
 
     ; recebe:  CX - pos X do pixel a ser lido
     ;          DX - pos Y do pixel a ser lido
-    ; retorna: BX - cor do pixel lido
+    ; retorna: BL - cor do pixel lido
     READ_PIXEL proc
         push AX
         push DI
@@ -485,7 +561,7 @@
         add AX, CX ; AX += X
          
         mov DI, AX
-        mov BX, ES:[DI]
+        mov BL, ES:[DI]
 
         pop CX
         pop DX
@@ -730,21 +806,38 @@
     endp 
 
     ; TODO
-    ; recebe: BX - cor do pixel do ghost que foi atingido
+    ; recebe: BL - cor do pixel do ghost que foi atingido
     ;         CX - posicao X do projetil
     ;         DX - posicao Y do projetil
     GHOST_HIT proc
         PUSH_CONTEXT
-        ; incrementar o score com base na cor de BX
-        ; remover o fantasma atingido de memoria
-        ; para remover deve ser pintado de preto uma area de NxN com CX,DX ao centro
-        ;   tipo como nos damos clear no projetil da posicao anterior
-        ;   so que aqui o tamanho da area a ser limpada (N) ainda nao sabemos
-        ;   confirmar qual a distancia entre ghosts (l? no AVA) para conseguir pensar no valor de N
-        
-        ; removendo o ghost atingido de memoria, os px sobrescritos em preto serao:
-        ;  12 para a direita e 12 para esquerda a partir do CX
-        ;  10 para cima a partir de DX
+        ; incrementar o score com base na cor de BL
+        ; verde - 10, azul - 20, vermelho - 30, roxo - 40
+        cmp BL, 2H ; verde
+        je GREEN_HIT
+        cmp BL, 3H ; azul
+        je BLUE_HIT
+        cmp BL, 4H ; vermelho
+        je RED_HIT
+        cmp BL, 5H ; roxo
+        je PURPLE_HIT
+        jmp REMOVE_GHOST ; qualquer outra cor
+
+        GREEN_HIT:
+            add score, 10
+            jmp REMOVE_GHOST
+        BLUE_HIT:
+            add score, 20
+            jmp REMOVE_GHOST
+        RED_HIT:
+            add score, 30
+            jmp REMOVE_GHOST
+        PURPLE_HIT:
+            add score, 40
+            jmp REMOVE_GHOST
+
+        REMOVE_GHOST:
+        call WRITE_SCORE
         
         mov AX, CX ; AX = X
         sub AX, 15 ; AX = X - 12
@@ -769,6 +862,7 @@
             pop DX ; restaurando o valor inicial de Y
             loop LOOP_CLEAR_COL
 
+        END_GHOST_HIT_PROC:
         call RESET_PROJECTILE
 
         POP_CONTEXT
@@ -782,7 +876,7 @@
 
         call GET_NEXT_PROJECTILE_POSITION_VALUES
         call READ_PIXEL
-        cmp BX, 0H
+        cmp BL, 0H
         je END_CHECK_COLISIONS_PROC ; caso o prox pixel do projetil eh preto nao houve colisao
 
         call GHOST_HIT
@@ -799,7 +893,11 @@
     ; vai printar os bonecos pela primeira vez em tela
     SETUP_GAME_SCREEN proc
         call WRITE_SCORE_LABEL
+        call WRITE_SCORE
+        call WRITE_SCORE
+
         call WRITE_TIME_LABEL
+
         call PRINT_HUNTER
         call PRINT_GHOST_LINE_1
         call SETUP_MOUSE
