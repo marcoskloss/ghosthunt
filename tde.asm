@@ -52,9 +52,16 @@
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
      ghost_line_1_direction db 1H ; 0H - move to right, 1H - move to left
+     ghost_line_2_direction db 1H
+
      ghosts_line_1_pos_y equ 10H
-     ghosts_line_1_pos_x_r dw 11FH, 133H
-     ghosts_line_1_pos_x_l dw 1H, 22H
+     ghosts_line_2_pos_y equ 1FH
+     ghosts_line_3_pos_y equ 2EH
+
+     ghosts_line1_pos_x_l dw 1H, 22H
+     ghosts_line2_pos_x_r dw 0F1H, 112H, 133H
+     ghosts_line3_pos_x_l dw 1H, 22H, 43H, 64H
+
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
                 db 00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
@@ -518,13 +525,12 @@
 
     ; AL - ghost color (02H verde, 03H ciano, 04H vermelho, 05H magenta)
     ; DI - ghost X pos offset
+    ; BX - ghost line Y
     PRINT_GHOST proc
         push SI
         push DI
         push BX
         mov SI, offset ghost_mask
-        ;mov DI, offset ghost_x_pos
-        mov BX, ghosts_line_1_pos_y ; Y
         call PRINT_CHARACTER
         pop BX
         pop DI
@@ -547,13 +553,14 @@
         ret
     endp
 
-    PRINT_GHOST_LINE_1 proc
+    ; recebe: AL - cor ghost
+    ;         DI - offset linha ghost X
+    ;         BX - linha ghost Y
+    ;         CX - qtd ghosts
+    PRINT_GHOST_LINE proc
         push CX
         push DI
         push AX
-        mov CX, 2H
-        mov DI, offset ghosts_line_1_pos_x_l
-        mov AL, 05H ; ghost color TODO!
         print_ghost_line1:
             call PRINT_GHOST
             add DI, 2 ; next ghost X pos
@@ -619,6 +626,10 @@
     endp
     
     ; Configura a variavel ghost_line_1_direction indicando o sentido do movimento
+    ; TODO - fazer essa proc generica
+    ;   recebendo: SI - offset ghost_line_1_direction da ghost line em questao
+    ;              AX - px inicio
+    ;              BX - px fim 
     CONF_MOVE_GHOST_LINE1:
         push BX
         push ES
@@ -683,8 +694,42 @@
         LOOP_MOVE_GHOST_LINE1:
           movsb ; ES:DI <- DS:SI
           loop LOOP_MOVE_GHOST_LINE1
+
+        POP_CONTEXT
+        pop DS
+        ret
+    endp
+
+    ; Realiza o movimento conforme o valor de ghost_line_2_direction
+    MOVE_GHOST_LINE2:
+        push DS
+        PUSH_CONTEXT
+      
+        ; Caso movimento para esquerda
+        cld
+        mov SI, 26C2H ;1402H + 12C0H (15 linhas) ; terceiro pixel da linha superior (ORIGEM)
+        mov DI, 26C1H ; 1401H + 12C0H ; segundo pixel da linha superior (DESTINO)
+
+        cmp ghost_line_2_direction, 1H
+        je PRE_MOVE_GHOST_LINE2
         
-          dbg:
+        ; Caso movimento para a direita
+        std
+        mov SI, 333DH ; 207DH + 12C0H ; antepenultimo pixel da linha (ORIGEM)
+        mov DI, 333EH ; 207EH + 12C0H ; penultimo pixel da linha (DESTINO)
+        
+        
+        PRE_MOVE_GHOST_LINE2:
+        
+        mov BX, video_mem_addr
+        mov ES, BX
+        mov DS, BX
+        
+        mov CX, 3200 ; 10 x 320 (10 linhas)
+        LOOP_MOVE_GHOST_LINE2:
+          movsb ; ES:DI <- DS:SI
+          loop LOOP_MOVE_GHOST_LINE2
+        
         POP_CONTEXT
         pop DS
         ret
@@ -938,6 +983,7 @@
     
     ; vai printar os bonecos pela primeira vez em tela
     SETUP_GAME_SCREEN proc
+        PUSH_CONTEXT
         call WRITE_SCORE_LABEL
         call WRITE_SCORE
 
@@ -945,15 +991,37 @@
         call UPDATE_TIME
         
         call PRINT_HUNTER
-        call PRINT_GHOST_LINE_1
-        call SETUP_MOUSE
         
+        mov AL, 05H ; magenta
+        mov DI, offset ghosts_line1_pos_x_l
+        mov BX, ghosts_line_1_pos_y
+        mov CX, 2
+        call PRINT_GHOST_LINE
+
+        mov AL, 3H ; ciano
+        mov DI, offset ghosts_line2_pos_x_r
+        mov BX, ghosts_line_2_pos_y
+        mov CX, 3
+        call PRINT_GHOST_LINE
+
+        mov AL, 2H ; verde
+        mov DI, offset ghosts_line3_pos_x_l
+        mov BX, ghosts_line_3_pos_y
+        mov CX, 4
+        call PRINT_GHOST_LINE
+
+        call SETUP_MOUSE
+        POP_CONTEXT
         ret
     endp
     
     START_GAME proc
         call CONF_MOVE_GHOST_LINE1
         call MOVE_GHOST_LINE1
+
+        ;call CONF_MOVE_GHOST_LINE2
+        ;call MOVE_GHOST_LINE2
+
         call CHECK_MOUSE_CLICK
         call CHECK_SHOOT
         call CHECK_COLISIONS
@@ -1000,6 +1068,9 @@
             end_prog:
         END_PROGRAM
 end main
+
+; ** Ver o que d? pra seguir dessa restri??o aqui:
+;    O tempo entre as movimenta??es dos fantasmas (500 ms) e o n?mero de fantasmas por linha devem ser configur?veis;
 
 ; TODOS
 ; [] 3 linhas de ghosts na tela de jogo (com cores diferentes)
