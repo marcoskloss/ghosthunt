@@ -625,46 +625,42 @@
         ret
     endp
     
-    ; Configura a variavel ghost_line_1_direction indicando o sentido do movimento
-    ; TODO - fazer essa proc generica
-    ;   recebendo: SI - offset ghost_line_1_direction da ghost line em questao
-    ;              AX - px inicio
-    ;              BX - px fim 
-    CONF_MOVE_GHOST_LINE1:
-        push BX
-        push ES
-        push AX
-        push DI
+    ; Configura a variavel ghost_line_direction indicando o sentido do movimento da linha
+    ; recebe: SI - offset ghost_line_direction da ghost line em questao
+    ;         AX - px inicio
+    ;         BX - px fim 
+    CONF_MOVE_GHOST_LINE:
+        PUSH_CONTEXT
+        
+        push BX ; salvando
         mov BX, video_mem_addr
         mov ES, BX
+        pop BX ; restaurando
         
         ; Se px inicio != preto
             ; entao: setar movimentacao para direita
-        mov AX, 1901H
         mov DI, AX
         mov AX, 0H
         cmp ES:[DI], AX
         je NEXT_PX_TEST_LINE1
-        mov ghost_line_1_direction, 0H
+        mov [SI], 0H
         
         ; Se px fim != preto
             ; entao: setar movimentacao para esquerda
         NEXT_PX_TEST_LINE1:
-        mov AX, 207EH
+        mov AX, BX ; AX = px do fim
         mov DI, AX
         mov AX, 0H
         cmp ES:[DI], AX
-        je END_PROC_CONF_MOVE_GHOST_LINE1
-        mov ghost_line_1_direction, 1H
+        je END_PROC_CONF_MOVE_GHOST_LINE
+        mov [SI], 1H
         
-        END_PROC_CONF_MOVE_GHOST_LINE1:
-        pop DI
-        pop AX
-        pop ES
-        pop BX
+        END_PROC_CONF_MOVE_GHOST_LINE:
+        POP_CONTEXT
         ret
     endp
     
+    ; TODO: tornar essa proc generica!
     ; Realiza o movimento conforme o valor de ghost_line_1_direction
     MOVE_GHOST_LINE1:
         push DS
@@ -1016,7 +1012,11 @@
     endp
     
     START_GAME proc
-        call CONF_MOVE_GHOST_LINE1
+        PUSH_CONTEXT
+        mov SI, offset ghost_line_1_direction
+        mov AX, 1901H
+        mov BX, 207EH
+        call CONF_MOVE_GHOST_LINE
         call MOVE_GHOST_LINE1
 
         ;call CONF_MOVE_GHOST_LINE2
@@ -1025,6 +1025,7 @@
         call CHECK_MOUSE_CLICK
         call CHECK_SHOOT
         call CHECK_COLISIONS
+        POP_CONTEXT
         ret
     endp
     
