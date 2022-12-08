@@ -52,7 +52,8 @@
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
      ghost_line_1_direction db 1H ; 0H - move to right, 1H - move to left
-     ghost_line_2_direction db 1H
+     ghost_line_2_direction db 0H
+     ghost_line_3_direction db 1H
 
      ghosts_line_1_pos_y equ 10H
      ghosts_line_2_pos_y equ 1FH
@@ -61,6 +62,27 @@
      ghosts_line1_pos_x_l dw 1H, 22H
      ghosts_line2_pos_x_r dw 0F1H, 112H, 133H
      ghosts_line3_pos_x_l dw 1H, 22H, 43H, 64H
+
+    ghost_line1_px_inicio       equ 1901H
+    ghost_line1_px_fim          equ 207EH
+    ghost_line1_px_origem_esq   equ 1402H
+    ghost_line1_px_destino_esq  equ 1401H
+    ghost_line1_px_origem_dir   equ 207DH
+    ghost_line1_px_destino_dir  equ 207EH
+
+    ghost_line2_px_inicio       equ 2BC1H ; 1901H + 15 linhas
+    ghost_line2_px_fim          equ 333EH ; 207EH + 15 linhas
+    ghost_line2_px_origem_esq   equ 26C2H ; 1402H + 15 linhas
+    ghost_line2_px_destino_esq  equ 26C1H ; 1401H + 15 linhas 
+    ghost_line2_px_origem_dir   equ 333DH ; 207DH + 15 linhas
+    ghost_line2_px_destino_dir  equ 333EH ; 207EH + 15 linhas
+
+    ghost_line3_px_inicio       equ 3E81H ; 2BC1H + 15 linhas
+    ghost_line3_px_fim          equ 45FEH ; 333EH + 15 linhas
+    ghost_line3_px_origem_esq   equ 3982H ; 26C2H + 15 linhas
+    ghost_line3_px_destino_esq  equ 3981H ; 26C1H + 15 linhas 
+    ghost_line3_px_origem_dir   equ 45FDH ; 333DH + 15 linhas
+    ghost_line3_px_destino_dir  equ 45FEH ; 333EH + 15 linhas
 
      ghost_mask db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H,00H
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H,00H
@@ -629,7 +651,7 @@
     ; recebe: SI - offset ghost_line_direction da ghost line em questao
     ;         AX - px inicio
     ;         BX - px fim 
-    CONF_MOVE_GHOST_LINE:
+    CONF_MOVE_GHOST_LINE proc
         PUSH_CONTEXT
         
         push BX ; salvando
@@ -660,77 +682,54 @@
         ret
     endp
     
-    ; TODO: tornar essa proc generica!
     ; Realiza o movimento conforme o valor de ghost_line_1_direction
-    MOVE_GHOST_LINE1:
+    ; recebe: AX - pixel_origem_mov_esquerda (ex: 1402H)
+    ;         BX - pixel_destino_mov_esquerda (ex: 1401H)
+    ;         CX - pixel_origem_mov_direita (ex: 207DH)
+    ;         DX - pixel_destino_mov_direita (ex: 207EH)
+    ;         SI - offset ghost_line_direction da ghost line em questao
+    MOVE_GHOST_LINE:
         push DS
         PUSH_CONTEXT
       
+      
         ; Caso movimento para esquerda
         cld
-        mov SI, 1402H ; terceiro pixel da linha superior (ORIGEM)
-        mov DI, 1401H ; segundo pixel da linha superior (DESTINO)
 
-        cmp ghost_line_1_direction, 1H
-        je PRE_MOVE_GHOST_LINE1
+        ; cmp ghost_line_1_direction, 1H
+        cmp [SI], 1H
+
+        ; mov SI, 1402H ; terceiro pixel da linha superior (ORIGEM)
+        mov SI, AX ; terceiro pixel da linha superior (ORIGEM)
+        ; mov DI, 1401H ; segundo pixel da linha superior (DESTINO)
+        mov DI, BX ; segundo pixel da linha superior (DESTINO)
+
+        je PRE_MOVE_GHOST_LINE ; referente ao "cmp [SI], 1H" a cima
         
         ; Caso movimento para a direita
         std
-        mov SI, 207DH ; antepenultimo pixel da linha (ORIGEM)
-        mov DI, 207EH ; penultimo pixel da linha (DESTINO)
+        ; mov SI, 207DH ; antepenultimo pixel da linha (ORIGEM)
+        mov SI, CX ; antepenultimo pixel da linha (ORIGEM)
+        ; mov DI, 207EH ; penultimo pixel da linha (DESTINO)
+        mov DI, DX ; penultimo pixel da linha (DESTINO)
         
         
-        PRE_MOVE_GHOST_LINE1:
+        PRE_MOVE_GHOST_LINE:
         
         mov BX, video_mem_addr
         mov ES, BX
         mov DS, BX
         
         mov CX, 3200 ; 10 x 320 (10 linhas)
-        LOOP_MOVE_GHOST_LINE1:
+        LOOP_MOVE_GHOST_LINE:
           movsb ; ES:DI <- DS:SI
-          loop LOOP_MOVE_GHOST_LINE1
+          loop LOOP_MOVE_GHOST_LINE
 
         POP_CONTEXT
         pop DS
         ret
     endp
 
-    ; Realiza o movimento conforme o valor de ghost_line_2_direction
-    MOVE_GHOST_LINE2:
-        push DS
-        PUSH_CONTEXT
-      
-        ; Caso movimento para esquerda
-        cld
-        mov SI, 26C2H ;1402H + 12C0H (15 linhas) ; terceiro pixel da linha superior (ORIGEM)
-        mov DI, 26C1H ; 1401H + 12C0H ; segundo pixel da linha superior (DESTINO)
-
-        cmp ghost_line_2_direction, 1H
-        je PRE_MOVE_GHOST_LINE2
-        
-        ; Caso movimento para a direita
-        std
-        mov SI, 333DH ; 207DH + 12C0H ; antepenultimo pixel da linha (ORIGEM)
-        mov DI, 333EH ; 207EH + 12C0H ; penultimo pixel da linha (DESTINO)
-        
-        
-        PRE_MOVE_GHOST_LINE2:
-        
-        mov BX, video_mem_addr
-        mov ES, BX
-        mov DS, BX
-        
-        mov CX, 3200 ; 10 x 320 (10 linhas)
-        LOOP_MOVE_GHOST_LINE2:
-          movsb ; ES:DI <- DS:SI
-          loop LOOP_MOVE_GHOST_LINE2
-        
-        POP_CONTEXT
-        pop DS
-        ret
-    endp
-    
     SETUP_MOUSE proc
         push AX
         mov  AX, 1H  ; show mouse
@@ -1013,14 +1012,46 @@
     
     START_GAME proc
         PUSH_CONTEXT
-        mov SI, offset ghost_line_1_direction
-        mov AX, 1901H
-        mov BX, 207EH
-        call CONF_MOVE_GHOST_LINE
-        call MOVE_GHOST_LINE1
 
-        ;call CONF_MOVE_GHOST_LINE2
-        ;call MOVE_GHOST_LINE2
+        ; Movimento linha 1
+        mov SI, offset ghost_line_1_direction
+        mov AX, ghost_line1_px_inicio
+        mov BX, ghost_line1_px_fim
+        call CONF_MOVE_GHOST_LINE
+
+        mov AX, ghost_line1_px_origem_esq
+        mov BX, ghost_line1_px_destino_esq
+        mov CX, ghost_line1_px_origem_dir
+        mov DX, ghost_line1_px_destino_dir
+        mov SI, offset ghost_line_1_direction
+        call MOVE_GHOST_LINE
+
+        ; Movimento linha 2
+        mov SI, offset ghost_line_2_direction
+        mov AX, ghost_line2_px_inicio
+        mov BX, ghost_line2_px_fim
+        call CONF_MOVE_GHOST_LINE
+
+        mov AX, ghost_line2_px_origem_esq
+        mov BX, ghost_line2_px_destino_esq
+        mov CX, ghost_line2_px_origem_dir
+        mov DX, ghost_line2_px_destino_dir
+        mov SI, offset ghost_line_2_direction
+        call MOVE_GHOST_LINE
+
+        ; Movimento linha 3
+        mov SI, offset ghost_line_3_direction
+        mov AX, ghost_line3_px_inicio
+        mov BX, ghost_line3_px_fim
+        call CONF_MOVE_GHOST_LINE
+
+        mov AX, ghost_line3_px_origem_esq
+        mov BX, ghost_line3_px_destino_esq
+        mov CX, ghost_line3_px_origem_dir
+        mov DX, ghost_line3_px_destino_dir
+        mov SI, offset ghost_line_3_direction
+        call MOVE_GHOST_LINE
+
 
         call CHECK_MOUSE_CLICK
         call CHECK_SHOOT
