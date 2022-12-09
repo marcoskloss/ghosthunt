@@ -22,6 +22,7 @@
     options_len equ $-options
     current_screen db 0 ; 0 - Menu, 1 - Jogo, 2 - Fim de jogo
     game_1st_render db 1H
+    delay_microsecs equ 0C350h ; 50000 microsecs
     
     blank_spaces db '    '
 
@@ -51,9 +52,9 @@
                 db 00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH
                 db 00H,00H,00H,0EH,0EH,0EH,0EH,0EH,0EH,0EH,0EH,00H
      
-     ghost_line_1_direction db 1H ; 0H - move to right, 1H - move to left
-     ghost_line_2_direction db 0H
-     ghost_line_3_direction db 1H
+     ghost_line_1_direction dw 1H ; 0H - move to right, 1H - move to left
+     ghost_line_2_direction dw 0H
+     ghost_line_3_direction dw 1H
 
      ghosts_line_1_pos_y equ 10H
      ghosts_line_2_pos_y equ 1FH
@@ -64,21 +65,21 @@
      ghosts_line3_pos_x_l dw 1H, 22H, 43H, 64H
 
     ghost_line1_px_inicio       equ 1901H
-    ghost_line1_px_fim          equ 207EH
+    ghost_line1_px_fim          equ 207DH
     ghost_line1_px_origem_esq   equ 1402H
     ghost_line1_px_destino_esq  equ 1401H
     ghost_line1_px_origem_dir   equ 207DH
     ghost_line1_px_destino_dir  equ 207EH
 
     ghost_line2_px_inicio       equ 2BC1H ; 1901H + 15 linhas
-    ghost_line2_px_fim          equ 333EH ; 207EH + 15 linhas
+    ghost_line2_px_fim          equ 333DH ; 207DH + 15 linhas
     ghost_line2_px_origem_esq   equ 26C2H ; 1402H + 15 linhas
     ghost_line2_px_destino_esq  equ 26C1H ; 1401H + 15 linhas 
     ghost_line2_px_origem_dir   equ 333DH ; 207DH + 15 linhas
     ghost_line2_px_destino_dir  equ 333EH ; 207EH + 15 linhas
 
     ghost_line3_px_inicio       equ 3E81H ; 2BC1H + 15 linhas
-    ghost_line3_px_fim          equ 45FEH ; 333EH + 15 linhas
+    ghost_line3_px_fim          equ 45FDH ; 333DH + 15 linhas
     ghost_line3_px_origem_esq   equ 3982H ; 26C2H + 15 linhas
     ghost_line3_px_destino_esq  equ 3981H ; 26C1H + 15 linhas 
     ghost_line3_px_origem_dir   equ 45FDH ; 333DH + 15 linhas
@@ -455,18 +456,18 @@
     endp
     
     DELAY proc  
-        push cx
-        push dx
-        push ax
+        push CX
+        push DX
+        push AX
         
-        xor cx, cx
-        mov dx, 0C350h ; 50000 microsegundos
-        mov ah, 86h
-        int 15h ; http://vitaly_filatov.tripod.com/ng/asm/asm_026.13.html
+        xor CX, CX
+        mov DX, delay_microsecs
+        mov AH, 86H
+        int 15H ; http://vitaly_filatov.tripod.com/ng/asm/asm_026.13.html
         
-        pop ax
-        pop dx
-        pop cx
+        pop AX
+        pop DX
+        pop CX
         ret
     endp 
 
@@ -675,6 +676,7 @@
         mov AX, 0H
         cmp ES:[DI], AX
         je END_PROC_CONF_MOVE_GHOST_LINE
+        ;jmp NEXT_PX_TEST_LINE1 ; DEBUG!!!!!!
         mov [SI], 1H
         
         END_PROC_CONF_MOVE_GHOST_LINE:
@@ -1101,8 +1103,6 @@
         END_PROGRAM
 end main
 
-; ** Ver o que d? pra seguir dessa restri??o aqui:
-;    O tempo entre as movimenta??es dos fantasmas (500 ms) e o n?mero de fantasmas por linha devem ser configur?veis;
 
 ; TODOS
 ; [] 3 linhas de ghosts na tela de jogo (com cores diferentes)
