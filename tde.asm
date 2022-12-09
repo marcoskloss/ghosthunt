@@ -15,8 +15,22 @@
                 db '      | |__ | | _   _  ____  | |_    ',10,13
                 db '      |  __)| || | | ||  _ \ |  _)   ',10,13
                 db '      | |   | || |_| || | | || |__   ',10,13
-                db '      |_|   |_| \____||_| |_| \___)  ',10,13                  
-    title_len  equ $-game_title
+                db '      |_|   |_| \____||_| |_| \___)  ',10,13             
+     title_len  equ $-game_title
+                            
+       end_game db '       _____ _            _          ',10,13
+                db '      |   __|_|_____    _| |___      ',10,13
+                db '      |   __| |     |  | . | -_|     ',10,13
+                db '      |__|  |_|_|_|_|  |___|___|     ',10,13
+                db '                                     ',10,13
+                db '                                     ',10,13
+                db '          __                         ',10,13
+                db '       __|  |___ ___ ___             ',10,13
+                db '      |  |  | . | . | . |            ',10,13
+                db '      |_____|___|_  |___|            ',10,13
+                db '                |___|                ',10,13
+    end_game_len  equ $-end_game
+    
     options  db '                  Jogar              ',10,13,10,13
              db '                  Sair               '
     options_len equ $-options
@@ -201,6 +215,21 @@
         pop AX
         pop DI
     endm
+
+    RENDER_END_GAME_TITLE proc
+        PUSH_CONTEXT
+        mov AX, @DATA 
+        mov ES, AX
+        
+        mov BL, 0AH
+        mov CX, end_game_len
+        mov DH, 10
+        mov DL, 0
+        mov BP, offset end_game
+        call PRINT_STRING
+        POP_CONTEXT
+        ret
+    endp
 
     ; SI - mask offset
     ; DX - X
@@ -440,8 +469,8 @@
         jmp END_UPDATE_TIME_PROC
         
         THE_END:
-            ; TODO! setar para direcionar para tela de end game
-            END_PROGRAM
+            call CLEAR_SCREEN
+            mov current_screen, 2H
             
         END_UPDATE_TIME_PROC:
         POP_CONTEXT
@@ -562,17 +591,13 @@
     endp
 
     PRINT_HUNTER proc
-        push SI
-        push DI
-        push AX
+        PUSH_CONTEXT
         mov SI, offset hunter_mask
         mov DI, offset hunter_x_pos
         mov BX, 0BEH ; Y
         mov AL, 0EH ; hunter color
         call PRINT_CHARACTER
-        pop AX
-        pop DI
-        pop SI
+        POP_CONTEXT
         ret
     endp
 
@@ -1061,6 +1086,17 @@
         POP_CONTEXT
         ret
     endp
+
+    RENDER_END_GAME proc
+        PUSH_CONTEXT
+        call RENDER_END_GAME_TITLE
+        
+        call WRITE_SCORE_LABEL
+        call WRITE_SCORE
+
+        POP_CONTEXT
+        ret
+    endp
     
     main:       
         mov AX, @DATA 
@@ -1081,9 +1117,8 @@
             cmp current_screen, 1H
             je game
             
-            ; call RENDER_END_GAME
-            ;jmp game_loop
-            jmp end_prog
+            call RENDER_END_GAME
+            jmp game_loop
             
             menu:
                 call RENDER_MENU
@@ -1102,20 +1137,5 @@
             end_prog:
         END_PROGRAM
 end main
-
-
-; TODOS
-; [] 3 linhas de ghosts na tela de jogo (com cores diferentes)
-;       usar as procs que ja temos
-; [] movimentacao ghosts tela inicial
-;       uma adaptacao da movimentacao dos ghosts na tela do jogo
-; [] tela de end game
-;       semelhante a tela inicial, porem vai ser necessario indicar o score
-; [] redirecionamento quando o timer zerar
-;       setar a var global para o valor correspondente
-; [] manter track da quantidade de ghosts por linha, e, quando todos os ghosts de uma linha forem eliminados, printar todos novamente;
-;       talvez um contador global de ghosts para cada linha
-;       a cada hit, decrementar o contador correspondente conforme a cor do ghost
-;       caso contador == 0: chamar a proc que printa a linha de ghosts correspondente
 
 ; *1: isso porque tem um bug quando o proj?til passa pela linha dos ghosts, como a movimenta??o dos ghosts ? somente 'empurrando'  para o lado os px em mem?ria, o px do proj?til tamb?m ? empurrado
