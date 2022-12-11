@@ -368,7 +368,7 @@
         mov DL, [DI]
         mov BL, 2H ; verde
         call PRINT_CHAR
-        inc [DI] ; warning
+        inc byte ptr [DI]
 
         pop DX
         pop BX            
@@ -691,7 +691,7 @@
         mov AX, 0H
         cmp ES:[DI], AX
         je NEXT_PX_TEST_LINE1
-        mov [SI], 0H
+        mov word ptr [SI], 0H
         
         ; Se px fim != preto
             ; entao: setar movimentacao para esquerda
@@ -701,8 +701,7 @@
         mov AX, 0H
         cmp ES:[DI], AX
         je END_PROC_CONF_MOVE_GHOST_LINE
-        ;jmp NEXT_PX_TEST_LINE1 ; DEBUG!!!!!!
-        mov [SI], 1H
+        mov word ptr [SI], 1H
         
         END_PROC_CONF_MOVE_GHOST_LINE:
         POP_CONTEXT
@@ -724,7 +723,7 @@
         cld
 
         ; cmp ghost_line_1_direction, 1H
-        cmp [SI], 1H
+        cmp word ptr [SI], 1H
 
         ; mov SI, 1402H ; terceiro pixel da linha superior (ORIGEM)
         mov SI, AX ; terceiro pixel da linha superior (ORIGEM)
