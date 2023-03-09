@@ -343,22 +343,22 @@
     PRINT_GREEN_UINT16 proc 
         PUSH_CONTEXT
         
-        mov BX, 10   ; divis?es sucessivas por 10
-        xor CX, CX   ; contador de d?gitos
+        mov BX, 10   ; divisoes sucessivas por 10
+        xor CX, CX   ; contador de digitos
         
     LACO_DIV:
-        xor DX, DX   ; zerar DX pois o dividendo ? DXAX
-        div BX       ; divis?o para separar o d?gito em DX
+        xor DX, DX   ; zerar DX pois o dividendo eh DXAX
+        div BX       ; divisao para separar o digito em DX
         
-        push DX      ; empilhar o d?gito
-        inc CX       ; incrementa o contador de d?gitos
+        push DX      ; empilhar o digito
+        inc CX       ; incrementa o contador de digitos
         
         cmp AX, 0    ; AX chegou a 0?
         jnz LACO_DIV ; enquanto AX diferente de 0 salte para LACO_DIV
             
     LACO_ESCDIG:   
-        pop DX       ; desempilha o d?gito    
-        add DL, '0'  ; converter o d?gito para ASCII
+        pop DX       ; desempilha o digito    
+        add DL, '0'  ; converter o digito para ASCII
         
         push AX
         push BX
@@ -374,7 +374,7 @@
         pop BX            
         pop AX
 
-        loop LACO_ESCDIG ; decrementa o contador de d?gitos
+        loop LACO_ESCDIG ; decrementa o contador de digitos
         
         POP_CONTEXT
         ret     
@@ -452,7 +452,7 @@
     
     UPDATE_TIME proc
         PUSH_CONTEXT
-        dec time ; a cada 50ms (tempo do delay) a var time ? decrementada em 1
+        dec time ; a cada 50ms (tempo do delay) a var time eh decrementada em 1
         cmp time, 0H
         je THE_END
         
@@ -796,7 +796,7 @@
         push DX
         push BX
 
-        ; sobrescrevemos um quadrado de 3x3 px, onde o px do meio eh a posicao anterior do projetil. Explicado em *1
+        ; sobrescrevemos um quadrado de 3x3 px, onde o px do meio eh a posicao anterior do projetil.
 
         mov CX, projectile_x
         mov DX, projectile_y
@@ -1137,4 +1137,3 @@
         END_PROGRAM
 end main
 
-; *1: isso porque tem um bug quando o proj?til passa pela linha dos ghosts, como a movimenta??o dos ghosts ? somente 'empurrando'  para o lado os px em mem?ria, o px do proj?til tamb?m ? empurrado
